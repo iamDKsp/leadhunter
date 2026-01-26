@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  folders      Folder[]
+
+  @@map("users")
+}
+
+model Company {
+  id            String   @id @default(uuid())
+  googlePlaceId String?  @unique // To prevent duplicates and track origin
+  name          String
+  phone         String?
+  email         String?
+  type          String   // e.g., lavacar, barbearia
+  activityBranch String // e.g., servicos, comercio
+  size          String   // e.g., medio, grande
+  location      String?
+  address       String?
+  latitude      Float?
+  longitude     Float?
+  successChance Float?   // 0-100
+  tips          String?
+  status        String?  // e.g., contacted, new
+  contacted     Boolean  @default(false)
+  website       String?
+  comments      String?
+  
+  folderId      String?
+  folder        Folder?  @relation(fields: [folderId], references: [id])
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("companies")
+}
+
+model Folder {
+  id        String    @id @default(uuid())
+  name      String
+  color     String    @default("#000000")
+  userId    String?
+  user      User?     @relation(fields: [userId], references: [id])
+  companies Company[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("folders")
+}
+
+model Message {
+  id         String   @id // WhatsApp Message ID
+  body       String
+  from       String
+  to         String
+  senderName String?
+  timestamp  Int
+  fromMe     Boolean
+  chatId     String // The conversation ID (e.g., 551499999999@c.us)
+  type       String   @default("chat") // chat, ptt (push to talk), image, etc.
+  ack        Int      @default(1)      // 1: sent, 2: delivered, 3: read
+  mediaData  String?  // Base64 or path
+  createdAt  DateTime @default(now())
+
+  @@index([chatId])
+  @@map("messages")
+}
+
+model CostLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  query     String
+  endpoint  String   // e.g., "textsearch", "details"
+  cost      Float
+  timestamp DateTime @default(now())
+
+  @@map("cost_logs")
+}

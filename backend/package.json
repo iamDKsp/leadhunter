@@ -1,0 +1,45 @@
+{
+    "name": "lead-hunter-backend",
+    "version": "1.0.0",
+    "description": "Backend for Lead Hunter application",
+    "main": "dist/server.js",
+    "scripts": {
+        "start": "node dist/server.js",
+        "dev": "tsx watch src/server.ts",
+        "build": "tsc",
+        "test": "vitest",
+        "lint": "eslint .",
+        "format": "prettier --write ."
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "@prisma/client": "^6.2.1",
+        "axios": "^1.7.9",
+        "bcryptjs": "^2.4.3",
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.7",
+        "express": "^4.21.2",
+        "helmet": "^8.0.0",
+        "jsonwebtoken": "^9.0.2",
+        "qrcode": "^1.5.4",
+        "socket.io": "^4.8.3",
+        "whatsapp-web.js": "github:pedroslopez/whatsapp-web.js",
+        "winston": "^3.11.0",
+        "zod": "^3.22.4"
+    },
+    "devDependencies": {
+        "@types/bcryptjs": "^2.4.6",
+        "@types/cors": "^2.8.17",
+        "@types/express": "^4.17.21",
+        "@types/jsonwebtoken": "^9.0.5",
+        "@types/node": "^20.11.19",
+        "@types/qrcode": "^1.5.6",
+        "@types/socket.io": "^3.0.1",
+        "prisma": "^6.2.1",
+        "tsx": "^4.7.1",
+        "typescript": "^5.3.3",
+        "vitest": "^1.2.2"
+    }
+}
