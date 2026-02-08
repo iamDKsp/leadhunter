@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Lead } from '@/types/lead';
 import { useLeads } from '@/hooks/useLeads';
 import { Sidebar } from '@/components/Sidebar';
@@ -14,11 +14,20 @@ import { WhatsAppDrawer } from '@/components/WhatsAppDrawer';
 import { cn } from '@/lib/utils';
 import { Users } from '@/components/Users';
 import { Costs } from '@/components/Costs';
+import { AccessGroups } from '@/components/AccessGroups';
+import { Shield } from 'lucide-react'; // Import Shield
+import LeadsCRM from './LeadsCRM';
+import Personal from './Personal';
+import Conversas from './Conversas';
+import Monitoring from './Monitoring';
 import { toast } from 'sonner';
+import { User } from '@/types/auth'; // Import User type
+import { canViewPage } from '@/utils/permissions'; // Import permission helper
 
 const Index = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<{ name: string, email: string } | undefined>(undefined);
+  const { view } = useParams();
+  const [user, setUser] = useState<User | undefined>(undefined);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -31,7 +40,25 @@ const Index = () => {
   }, [navigate]);
 
   const { leads, folders, addLead, updateLead, deleteLead, refresh } = useLeads();
-  const [activeView, setActiveView] = useState('dashboard');
+  const [activeView, setActiveView] = useState(view || 'dashboard');
+
+  useEffect(() => {
+    if (view) {
+      setActiveView(view);
+    } else {
+      setActiveView('dashboard');
+    }
+  }, [view]);
+
+  // Handle view change by navigating
+  const handleViewChange = (newView: string) => {
+    setActiveView(newView);
+    if (newView === 'dashboard') {
+      navigate('/');
+    } else {
+      navigate(`/${newView}`);
+    }
+  };
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [filters, setFilters] = useState<SearchFiltersState>({
@@ -41,7 +68,7 @@ const Index = () => {
     activityBranch: 'all',
     contacted: 'all',
   });
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => window.innerWidth < 768);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [activeChat, setActiveChat] = useState<{ number: string, name: string } | null>(null);
 
@@ -120,8 +147,12 @@ const Index = () => {
     switch (activeView) {
       case 'dashboard':
         return { title: 'Dashboard', subtitle: 'Visão geral dos seus leads' };
+      case 'personal':
+        return { title: 'Pessoal', subtitle: 'Seu desempenho e metas' };
       case 'leads':
         return { title: 'Todos os Leads', subtitle: `${leads.length} empresas cadastradas` };
+      case 'monitoring':
+        return { title: 'Monitoramento', subtitle: 'Acompanhamento da equipe em tempo real' };
       case 'search':
         return { title: 'Buscar Empresas', subtitle: 'Encontre novas oportunidades' };
       case 'analytics':
@@ -130,6 +161,8 @@ const Index = () => {
         return { title: 'Usuários', subtitle: 'Gerenciamento de acesso' };
       case 'costs':
         return { title: 'Custos da API', subtitle: 'Monitoramento de gastos' };
+      case 'access-groups':
+        return { title: 'Grupos de Acesso', subtitle: 'Gerenciamento de permissões' };
       default:
         return { title: 'Lead Hunter', subtitle: '' };
     }
@@ -138,8 +171,29 @@ const Index = () => {
   const viewInfo = getViewTitle();
 
   const renderContent = () => {
+    // Permission check
+    if (user && !canViewPage(user, activeView)) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full text-center p-8 animate-fade-in">
+          <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
+            <Shield className="w-8 h-8 text-destructive" />
+          </div>
+          <h2 className="text-2xl font-bold mb-2">Acesso Negado</h2>
+          <p className="text-muted-foreground max-w-md">
+            Você não tem permissão para acessar esta página. Entre em contato com seu administrador se acreditar que isso é um erro.
+          </p>
+        </div>
+      );
+    }
+
     if (activeView === 'analytics') {
       return <Analytics leads={leads} />;
+    }
+    if (activeView === 'personal') {
+      return <Personal userName={user?.name || 'Usuário'} />;
+    }
+    if (activeView === 'monitoring') {
+      return <Monitoring />;
     }
     if (activeView === 'users') {
       return <Users />;
@@ -147,6 +201,18 @@ const Index = () => {
     if (activeView === 'costs') {
       return <Costs />;
     }
+    if (activeView === 'access-groups') {
+      return <AccessGroups />;
+    }
+
+    if (activeView === 'conversas') {
+      return <Conversas />;
+    }
+
+    if (activeView === 'leads') {
+      return <LeadsCRM />;
+    }
+
 
     return (
       <>
@@ -156,12 +222,12 @@ const Index = () => {
         </div>
 
         {/* Search and Filters */}
-        <div className="mb-6">
+        <div className="mb-6 animate-fade-in delay-100">
           <SearchFilters filters={filters} onFiltersChange={setFilters} />
         </div>
 
         {/* Leads Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-fade-in delay-200">
           {filteredLeads.map((lead) => (
             <LeadCard
               key={lead.id}
@@ -181,7 +247,7 @@ const Index = () => {
         </div>
 
         {filteredLeads.length === 0 && (
-          <div className="glass-card p-12 text-center">
+          <div className="bg-card/40 backdrop-blur-sm border border-border/30 p-12 text-center rounded-xl animate-fade-in">
             <p className="text-muted-foreground text-lg">
               {filters.searchTerm || filters.type !== 'all' || filters.size !== 'all'
                 ? 'Nenhum lead encontrado com os filtros aplicados.'
@@ -194,18 +260,19 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background transition-all duration-300">
+    <div className="flex h-screen bg-background text-foreground overflow-hidden">
       <Sidebar
         folders={folders}
         activeView={activeView}
-        onViewChange={setActiveView}
+        onViewChange={handleViewChange}
         onAddFolder={handleAddFolder}
         isCollapsed={isSidebarCollapsed}
         toggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        user={user}
       />
 
       <main className={cn(
-        "p-8 transition-all duration-300",
+        "flex-1 flex flex-col overflow-hidden transition-all duration-300",
         isSidebarCollapsed ? "ml-20" : "ml-64"
       )}>
         <Header
@@ -216,14 +283,19 @@ const Index = () => {
           onLogout={handleLogout}
         />
 
-        {activeView === 'search' ? (
-          <GoogleMapsSearch onLeadAdded={(newLead) => {
-            toast.success("Lead salvo! Verifique na aba 'Todos os Leads'");
-            refresh(); // Update the list immediately
-          }} />
-        ) : (
-          renderContent()
-        )}
+        <div className={cn(
+          "flex-1 overflow-auto custom-scrollbar bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-background to-background",
+          activeView === 'conversas' ? "p-0" : "p-6"
+        )}>
+          {activeView === 'search' ? (
+            <GoogleMapsSearch onLeadAdded={(newLead) => {
+              toast.success("Lead salvo! Verifique na aba 'Todos os Leads'");
+              refresh(); // Update the list immediately
+            }} />
+          ) : (
+            renderContent()
+          )}
+        </div>
       </main>
 
       <LeadModal

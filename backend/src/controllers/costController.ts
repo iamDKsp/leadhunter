@@ -34,11 +34,7 @@ export const getCostStats = async (req: AuthRequest, res: Response) => {
 
         const recentLogs = await prisma.costLog.findMany({
             take: 50,
-            orderBy: { timestamp: 'desc' },
-            include: {
-                // If we had a relation to users in cost_logs we could include it,
-                // but for now we manually fetch user data if needed or just show userId
-            }
+            orderBy: { timestamp: 'desc' }
         });
 
         // Enrich logs with user names

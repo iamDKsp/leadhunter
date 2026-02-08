@@ -11,12 +11,24 @@ export function useLeads() {
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const [leadsData, foldersData] = await Promise.all([
+      const [leadsResult, foldersResult] = await Promise.allSettled([
         companies.getAll(),
         foldersApi.getAll()
       ]);
-      setLeads(leadsData);
-      setFolders(foldersData);
+
+      if (leadsResult.status === 'fulfilled') {
+        setLeads(leadsResult.value);
+      } else {
+        console.error('Failed to fetch leads:', leadsResult.reason);
+        toast.error('Erro ao carregar leads');
+      }
+
+      if (foldersResult.status === 'fulfilled') {
+        setFolders(foldersResult.value);
+      } else {
+        console.error('Failed to fetch folders:', foldersResult.reason);
+        // Optional: toast error for folders
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('Erro ao carregar dados');

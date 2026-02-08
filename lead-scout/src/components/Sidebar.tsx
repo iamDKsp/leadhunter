@@ -1,171 +1,162 @@
 import { Folder } from '@/types/lead';
+import { User } from '@/types/auth'; // Import User type
+import { canViewPage } from '@/utils/permissions'; // Import permission helper
 import {
   LayoutDashboard,
-  FolderOpen,
-  Search,
-  Plus,
-  Settings,
+  Users,
   TrendingUp,
-  Users
+  Search,
+  FolderPlus,
+  Settings,
+  ChevronLeft,
+  Crown,
+  FolderOpen,
+  Shield,
+  User as UserIcon,
+  Eye,
+  MessageSquare
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 interface SidebarProps {
   folders: Folder[];
+  activeView: string;
   onViewChange: (view: string) => void;
   onAddFolder: () => void;
   isCollapsed: boolean;
   toggleSidebar: () => void;
+  user?: User | null; // Add user prop
 }
 
-export function Sidebar({ folders, activeView, onViewChange, onAddFolder, isCollapsed, toggleSidebar }: SidebarProps) {
+export function Sidebar({ folders, activeView, onViewChange, onAddFolder, isCollapsed, toggleSidebar, user }: SidebarProps) {
+  const navigate = useNavigate();
+
+  const menuItems = [
+    { icon: LayoutDashboard, label: 'Dashboard', id: 'dashboard' },
+    { icon: UserIcon, label: 'Pessoal', id: 'personal' },
+    { icon: MessageSquare, label: 'Conversas', id: 'conversas' },
+    { icon: Users, label: 'Todos os Leads', id: 'leads' },
+    { icon: Users, label: 'Usuários', id: 'users' },
+    { icon: Eye, label: 'Monitoramento', id: 'monitoring' },
+    { icon: Shield, label: 'Grupos de Acesso', id: 'access-groups' },
+    { icon: TrendingUp, label: 'Custos', id: 'costs' },
+    { icon: Search, label: 'Buscar Empresas', id: 'search' },
+    { icon: TrendingUp, label: 'Análises', id: 'analytics' },
+  ];
+
+  // Filter menu items based on permissions
+  const visibleMenuItems = menuItems.filter(item => canViewPage(user, item.id));
+
   return (
     <aside className={cn(
-      "h-screen fixed left-0 top-0 bg-sidebar border-r border-sidebar-border flex flex-col transition-all duration-300",
+      "bg-card/90 backdrop-blur-xl border-r border-border/30 flex flex-col transition-all duration-300 fixed left-0 top-0 h-screen z-50",
       isCollapsed ? "w-20" : "w-64"
     )}>
       {/* Logo */}
-      <div className="p-6 border-b border-sidebar-border relative">
-        <div className="flex items-center gap-3">
-          <img
-            src="/logo.png"
-            alt="Lead Hunter Logo"
-            className="w-10 h-10 object-contain"
-          />
-          {!isCollapsed && (
-            <div>
-              <h1 className="font-display font-bold text-lg text-foreground">Lead Hunter</h1>
-              <p className="text-xs text-muted-foreground">Capture & Organize</p>
-            </div>
-          )}
+      <div className="p-4 border-b border-border/30 flex items-center gap-3">
+        <div className="w-10 h-10 bg-yellow-500 rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg">
+          <Crown className="w-6 h-6 text-background" />
         </div>
+        {!isCollapsed && (
+          <div className="animate-fade-in">
+            <h1 className="font-bold text-foreground tracking-wide">Lead Hunter</h1>
+            <p className="text-xs text-muted-foreground">Capture & Organize</p>
+          </div>
+        )}
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {!isCollapsed && (
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-4 mb-3">
-            Menu Principal
-          </p>
-        )}
+      {/* Menu Principal */}
+      <nav className="flex-1 p-3 overflow-y-auto custom-scrollbar">
+        {!isCollapsed && <p className="text-xs text-muted-foreground px-3 mb-2 uppercase tracking-wider font-semibold">Menu Principal</p>}
+        <ul className="space-y-1">
+          {visibleMenuItems.map((item) => (
+            <li key={item.id}>
+              <button
+                onClick={() => onViewChange(item.id)}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-300",
+                  activeView === item.id
+                    ? "bg-primary/20 text-primary shadow-sm"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                  isCollapsed && "justify-center px-2"
+                )}
+                title={isCollapsed ? item.label : undefined}
+              >
+                <item.icon className="w-5 h-5 flex-shrink-0" />
+                {!isCollapsed && <span className="text-sm font-medium">{item.label}</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
 
-        <button
-          onClick={() => onViewChange('dashboard')}
-          className={cn('sidebar-item w-full', activeView === 'dashboard' && 'sidebar-item-active', isCollapsed && 'justify-center px-2')}
-        >
-          <LayoutDashboard className="w-5 h-5 flex-shrink-0" />
-          {!isCollapsed && <span>Dashboard</span>}
-        </button>
-
-        <button
-          onClick={() => onViewChange('leads')}
-          className={cn('sidebar-item w-full', activeView === 'leads' && 'sidebar-item-active', isCollapsed && 'justify-center px-2')}
-        >
-          <Users className="w-5 h-5 flex-shrink-0" />
-          {!isCollapsed && <span>Todos os Leads</span>}
-        </button>
-
-        {/* NEW MODULES */}
-        <button
-          onClick={() => onViewChange('users')}
-          className={cn('sidebar-item w-full', activeView === 'users' && 'sidebar-item-active', isCollapsed && 'justify-center px-2')}
-        >
-          <Users className="w-5 h-5 flex-shrink-0" />
-          {!isCollapsed && <span>Usuários</span>}
-        </button>
-
-        <button
-          onClick={() => onViewChange('costs')}
-          className={cn('sidebar-item w-full', activeView === 'costs' && 'sidebar-item-active', isCollapsed && 'justify-center px-2')}
-        >
-          <TrendingUp className="w-5 h-5 flex-shrink-0" />
-          {!isCollapsed && <span>Custos</span>}
-        </button>
-
-        <button
-          onClick={() => onViewChange('search')}
-          className={cn('sidebar-item w-full', activeView === 'search' && 'sidebar-item-active', isCollapsed && 'justify-center px-2')}
-        >
-          <Search className="w-5 h-5 flex-shrink-0" />
-          {!isCollapsed && <span>Buscar Empresas</span>}
-        </button>
-
-        <button
-          onClick={() => onViewChange('analytics')}
-          className={cn('sidebar-item w-full', activeView === 'analytics' && 'sidebar-item-active', isCollapsed && 'justify-center px-2')}
-        >
-          <TrendingUp className="w-5 h-5 flex-shrink-0" />
-          {!isCollapsed && <span>Análises</span>}
-        </button>
-
-        {/* Folders Section */}
-        <div className="pt-6">
-          <div className="flex items-center justify-between px-4 mb-3">
-            {!isCollapsed && (
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Pastas
-              </p>
-            )}
+        {/* Pastas */}
+        <div className="mt-8">
+          <div className="flex items-center justify-between px-3 mb-2">
+            {!isCollapsed && <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Pastas</p>}
             <button
               onClick={onAddFolder}
               className={cn(
-                "p-1 rounded-md hover:bg-secondary/50 text-muted-foreground hover:text-foreground transition-colors",
+                "text-muted-foreground hover:text-primary transition-colors p-1 rounded hover:bg-primary/10",
                 isCollapsed && "mx-auto"
               )}
+              title="Nova Pasta"
             >
-              <Plus className="w-4 h-4" />
+              <FolderPlus className="w-4 h-4" />
             </button>
           </div>
 
-          {folders.map((folder) => (
-            <button
-              key={folder.id}
-              onClick={() => onViewChange(`folder-${folder.id}`)}
-              className={cn(
-                'sidebar-item w-full',
-                activeView === `folder-${folder.id}` && 'sidebar-item-active',
-                isCollapsed && 'justify-center px-2'
-              )}
-            >
-              <FolderOpen
-                className="w-5 h-5 flex-shrink-0"
-                style={{ color: folder.color }}
-              />
-              {!isCollapsed && (
-                <>
-                  <span className="flex-1 text-left">{folder.name}</span>
-                  <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                    {folder.leadCount}
-                  </span>
-                </>
-              )}
-            </button>
-          ))}
+          <ul className="space-y-1">
+            {folders.map((folder) => (
+              <li key={folder.id}>
+                <button
+                  onClick={() => onViewChange(`folder-${folder.id}`)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-300",
+                    activeView === `folder-${folder.id}`
+                      ? "bg-primary/20 text-primary shadow-sm"
+                      : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                    isCollapsed && "justify-center px-2"
+                  )}
+                  title={isCollapsed ? folder.name : undefined}
+                >
+                  <FolderOpen className="w-5 h-5 flex-shrink-0" style={{ color: folder.color }} />
+                  {!isCollapsed && (
+                    <>
+                      <span className="flex-1 text-left text-sm font-medium truncate">{folder.name}</span>
+                      <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full min-w-[20px] text-center">
+                        {folder.leadCount}
+                      </span>
+                    </>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       </nav>
 
-      {/* Settings & Collapse */}
-      <div className="p-4 border-t border-sidebar-border space-y-2">
+      {/* Footer */}
+      <div className="p-3 border-t border-border/30 bg-card/50">
         <button
           onClick={() => onViewChange('settings')}
-          className={cn('sidebar-item w-full', activeView === 'settings' && 'sidebar-item-active', isCollapsed && 'justify-center px-2')}
+          className={cn(
+            "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground transition-all duration-300",
+            activeView === 'settings' && "bg-primary/20 text-primary",
+            isCollapsed && "justify-center px-2"
+          )}
+          title={isCollapsed ? "Configurações" : undefined}
         >
           <Settings className="w-5 h-5 flex-shrink-0" />
-          {!isCollapsed && <span>Configurações</span>}
+          {!isCollapsed && <span className="text-sm font-medium">Configurações</span>}
         </button>
-
         <button
           onClick={toggleSidebar}
-          className={cn('sidebar-item w-full justify-center text-muted-foreground hover:text-foreground')}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground transition-all mt-1 justify-center"
+          title={isCollapsed ? "Expandir" : "Minimizar"}
         >
-          {isCollapsed ? (
-            <Plus className="w-5 h-5 rotate-45" /* Using Plus as generic icon or ArrowRight implies expand */ />
-          ) : (
-            <div className="flex items-center gap-2 w-full">
-              {/* Icon for collapse could be added here, or just a text button */}
-              <span className="text-xs uppercase font-bold">Minimizar Menu</span>
-            </div>
-          )}
+          <ChevronLeft className={cn("w-5 h-5 flex-shrink-0 transition-transform duration-300", isCollapsed && "rotate-180")} />
+          {!isCollapsed && <span className="text-sm font-medium">Minimizar Menu</span>}
         </button>
       </div>
     </aside>

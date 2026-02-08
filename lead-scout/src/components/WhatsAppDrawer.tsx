@@ -1,9 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { io, Socket } from 'socket.io-client';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { ScrollArea } from './ui/scroll-area';
-import { MessageCircle, Send, Phone, User, X, LogOut, Mic, Check, CheckCheck, Play, Pause, Trash } from 'lucide-react';
+
+import { MessageCircle, Send, Phone, User, X, LogOut, Mic, Check, CheckCheck, Play, Pause, Trash, Paperclip, Image as ImageIcon } from 'lucide-react';
 import {
     Sheet,
     SheetContent,
@@ -15,6 +14,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useWhatsApp } from '@/context/WhatsAppContext';
 
 interface WhatsAppMessage {
     id: string;
@@ -50,9 +50,9 @@ const formatPhoneNumber = (phone: string | undefined | null) => {
 };
 
 export const WhatsAppDrawer = ({ open, onOpenChange, targetNumber, targetName }: WhatsAppDrawerProps) => {
-    const [socket, setSocket] = useState<Socket | null>(null);
-    const [status, setStatus] = useState<string>('DISCONNECTED');
-    const [qrCode, setQrCode] = useState<string | null>(null);
+    const { socket, status, qrCode, isConnected } = useWhatsApp();
+
+    // We keep local messages state to manage the specific chat history
     const [messages, setMessages] = useState<WhatsAppMessage[]>([]);
     const [input, setInput] = useState('');
     const [isRecording, setIsRecording] = useState(false);
@@ -62,6 +62,7 @@ export const WhatsAppDrawer = ({ open, onOpenChange, targetNumber, targetName }:
     const timerRef = useRef<NodeJS.Timeout | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const [activeChatId, setActiveChatId] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Update active chat ID when target number changes
     useEffect(() => {
@@ -69,17 +70,17 @@ export const WhatsAppDrawer = ({ open, onOpenChange, targetNumber, targetName }:
             const formatted = formatPhoneNumber(targetNumber);
             // WhatsApp Web IDs are usually number@c.us
             setActiveChatId(`${formatted}@c.us`);
+            // When switching chat, clear previous messages to avoid flickering
+            setMessages([]);
         } else {
             setActiveChatId(null);
+            setMessages([]);
         }
     }, [targetNumber]);
 
     // Load messages from backend when activeChatId changes
     useEffect(() => {
-        if (!activeChatId) {
-            setMessages([]);
-            return;
-        }
+        if (!activeChatId) return;
 
         const fetchMessages = async () => {
             try {
@@ -87,6 +88,7 @@ export const WhatsAppDrawer = ({ open, onOpenChange, targetNumber, targetName }:
                 const response = await fetch(`${BACKEND_URL}/messages/${encodeURIComponent(activeChatId)}`);
                 if (response.ok) {
                     const data = await response.json();
+                    console.log("Fetched messages:", data);
                     setMessages(data);
                     setTimeout(() => {
                         scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -100,57 +102,45 @@ export const WhatsAppDrawer = ({ open, onOpenChange, targetNumber, targetName }:
         fetchMessages();
     }, [activeChatId]);
 
-    // Listen for new messages via socket
+    // Listen for new messages via socket (Global Socket)
     useEffect(() => {
-        if (activeChatId) {
-            // Re-fetch or append? Appending is smoother.
-            // But we need to make sure we don't duplicate.
-        }
-    }, [activeChatId]);
+        if (!socket) return;
 
-    useEffect(() => {
-        const newSocket = io(BACKEND_URL);
-        setSocket(newSocket);
+        const handleNewMessage = (msg: WhatsAppMessage) => {
+            console.log("Real-time message received:", msg);
+            // Append message only if it belongs to the current chat
+            // OR if it's from ME (so it appears immediately)
+            if (!activeChatId) return;
 
-        newSocket.on('connect', () => {
-            console.log("Connected to WebSocket");
-        });
+            const isForThisChat =
+                (msg.fromMe && msg.to === activeChatId) ||
+                (!msg.fromMe && msg.from === activeChatId);
 
-        newSocket.on('whatsapp_status', (data) => {
-            setStatus(data.status);
-            if (data.qr) setQrCode(data.qr);
-        });
+            if (isForThisChat) {
+                setMessages(prev => {
+                    if (prev.find(m => m.id === msg.id)) return prev;
+                    return [...prev, msg];
+                });
+                setTimeout(() => {
+                    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+                }, 100);
+            }
+        };
 
-        newSocket.on('whatsapp_qr', (data) => {
-            setQrCode(data);
-            setStatus('QR_RECEIVED');
-        });
+        const handleAck = (data: { msgId: string, ack: number }) => {
+            setMessages(prev => prev.map(m =>
+                m.id === data.msgId ? { ...m, ack: data.ack } : m
+            ));
+        };
 
-        newSocket.on('whatsapp_message', (msg: WhatsAppMessage) => {
-            setMessages(prev => {
-                if (prev.find(m => m.id === msg.id)) return prev;
-                return [...prev, msg];
-            });
-            setTimeout(() => {
-                scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-            }, 100);
-        });
+        socket.on('whatsapp_message', handleNewMessage);
+        socket.on('whatsapp_ack', handleAck);
 
         return () => {
-            newSocket.disconnect();
+            socket.off('whatsapp_message', handleNewMessage);
+            socket.off('whatsapp_ack', handleAck);
         };
-    }, []);
-
-    // Filter messages for current chat
-    const filteredMessages = messages.filter(msg => {
-        if (!activeChatId) return true; // Show all if no specific target (or handle differently)
-        // Check if message belongs to this chat
-        // If from me, 'to' should match activeChatId (remote) - simplified check involves 'from' or matching logic
-        const remoteId = msg.fromMe ? msg.to : msg.from;
-
-        // Basic loose matching because 'c.us' suffix might vary or strip
-        return remoteId?.includes(activeChatId) || activeChatId?.includes(remoteId?.split('@')[0]);
-    });
+    }, [socket, activeChatId]);
 
 
     const startRecording = async () => {
@@ -184,7 +174,7 @@ export const WhatsAppDrawer = ({ open, onOpenChange, targetNumber, targetName }:
             mediaRecorderRef.current.onstop = async () => {
                 const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
                 if (shouldSend) {
-                    await sendAudio(audioBlob);
+                    await sendMedia(audioBlob, 'ptt');
                 }
 
                 // Cleanup
@@ -196,35 +186,42 @@ export const WhatsAppDrawer = ({ open, onOpenChange, targetNumber, targetName }:
         }
     };
 
-    const sendAudio = async (blob: Blob) => {
-        if (!socket || !activeChatId) return;
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            await sendMedia(file, 'image');
+            // Reset input
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
 
-        // Convert Blob to Base64
+    const sendMedia = async (file: Blob | File, type: 'ptt' | 'image') => {
+        if (!activeChatId) return;
+
+        // Convert Blob/File to Base64
         const reader = new FileReader();
-        reader.readAsDataURL(blob);
+        reader.readAsDataURL(file);
         reader.onloadend = async () => {
-            const base64Audio = reader.result as string;
+            const base64Media = reader.result as string;
 
             try {
-                // Send to backend (need to update endpoint to handle media)
-                // For now, let's assume the modify endpoint or a new one
                 const response = await fetch(`${BACKEND_URL}/whatsapp/send-media`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         to: activeChatId,
-                        media: base64Audio,
-                        type: 'ptt'
+                        media: base64Media,
+                        type: type
                     })
                 });
 
                 if (response.ok) {
-                    // Success handled by socket
+                    // Success is handled by the socket event 'whatsapp_message'
                 } else {
-                    toast.error("Erro ao enviar áudio.");
+                    toast.error("Erro ao enviar mídia.");
                 }
             } catch (e) {
-                toast.error("Erro ao enviar áudio.");
+                toast.error("Erro ao enviar mídia.");
             }
         };
     };
@@ -236,7 +233,7 @@ export const WhatsAppDrawer = ({ open, onOpenChange, targetNumber, targetName }:
     };
 
     const handleSend = async () => {
-        if (!input.trim() || !socket) return;
+        if (!input.trim()) return;
 
         const target = activeChatId;
 
@@ -253,8 +250,6 @@ export const WhatsAppDrawer = ({ open, onOpenChange, targetNumber, targetName }:
             });
 
             if (response.ok) {
-                // We rely on the backend socket event to add the message to the list
-                // This prevents duplication (one from optimistic, one from socket)
                 setInput('');
                 setTimeout(() => {
                     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -273,16 +268,12 @@ export const WhatsAppDrawer = ({ open, onOpenChange, targetNumber, targetName }:
 
         try {
             await fetch(`${BACKEND_URL}/whatsapp/logout`, { method: 'POST' });
-            setStatus('DISCONNECTED');
-            setQrCode(null);
             toast.success("Desconectado com sucesso.");
         } catch (e) {
             console.error(e);
             toast.error("Erro ao desconectar.");
         }
     };
-
-    const isConnected = status === 'CONNECTED' || status === 'AUTHENTICATED' || status === 'READY';
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
@@ -306,7 +297,7 @@ export const WhatsAppDrawer = ({ open, onOpenChange, targetNumber, targetName }:
                         </div>
                         <div>
                             <h3 className="font-semibold text-foreground flex items-center gap-2">
-                                {targetName || "WhatsApp"}
+                                {targetName || "WhatsApp"} ({messages.length})
                                 {!isConnected && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-500 border border-yellow-500/20">Desconectado</span>}
                             </h3>
                             <p className="text-xs text-muted-foreground">
@@ -341,13 +332,22 @@ export const WhatsAppDrawer = ({ open, onOpenChange, targetNumber, targetName }:
 
                     {!isConnected ? (
                         <div className="flex flex-col items-center justify-center h-full p-8 text-center z-10 relative text-gray-400">
-                            {/* ... keep disconnected state but maybe style it dark ... */}
-                            <p>Conectando...</p>
+                            {qrCode ? (
+                                <div className="bg-white p-4 rounded-lg shadow-lg">
+                                    <img src={qrCode} alt="WhatsApp QR Code" className="w-64 h-64" />
+                                    <p className="mt-4 text-black font-semibold">Escaneie para conectar</p>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400 mb-4"></div>
+                                    <p>Conectando ao WhatsApp...</p>
+                                </div>
+                            )}
                         </div>
                     ) : (
-                        <ScrollArea className="h-full px-4 py-4 z-10 relative">
+                        <div className="h-full px-4 py-4 z-10 relative overflow-y-auto custom-scrollbar">
                             <div className="space-y-2 pb-4">
-                                {filteredMessages.map((msg, idx) => (
+                                {messages.map((msg, idx) => (
                                     <div
                                         key={msg.id || idx}
                                         className={cn(
@@ -359,11 +359,16 @@ export const WhatsAppDrawer = ({ open, onOpenChange, targetNumber, targetName }:
                                     >
                                         {msg.type === 'ptt' && msg.body ? (
                                             <div className="flex items-center gap-2 min-w-[200px] py-1">
-                                                <Play className="w-5 h-5 text-gray-300" />
-                                                {/* Placeholder audio player */}
-                                                <div className="h-1 bg-gray-500 w-full rounded-full"></div>
-                                                {/* If we have the audio data/url, we could use <audio src={msg.body} /> but keeping it simple for now */}
-                                                <audio src={msg.body} controls className="hidden" /> {/* Hidden real player */}
+                                                <audio src={msg.body} controls className="max-w-[220px] h-8" />
+                                            </div>
+                                        ) : msg.type === 'image' && msg.body ? (
+                                            <div className="p-1">
+                                                <img
+                                                    src={msg.body}
+                                                    alt="Imagem"
+                                                    className="rounded-lg max-w-full max-h-[300px] object-cover cursor-pointer"
+                                                    onClick={() => window.open(msg.body, '_blank')}
+                                                />
                                             </div>
                                         ) : (
                                             <p className="leading-relaxed whitespace-pre-wrap px-1 pt-1 break-words">{msg.body}</p>
@@ -389,7 +394,7 @@ export const WhatsAppDrawer = ({ open, onOpenChange, targetNumber, targetName }:
                                 ))}
                                 <div ref={scrollRef} />
                             </div>
-                        </ScrollArea>
+                        </div>
                     )}
                 </div>
 
@@ -412,6 +417,25 @@ export const WhatsAppDrawer = ({ open, onOpenChange, targetNumber, targetName }:
                         </div>
                     ) : (
                         <>
+                            {/* Image Upload Button */}
+                            <Input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                ref={fileInputRef}
+                                onChange={handleFileSelect}
+                            />
+                            <Button
+                                onClick={() => fileInputRef.current?.click()}
+                                variant="ghost"
+                                size="icon"
+                                className="h-10 w-10 shrink-0 text-gray-400 hover:bg-[#374248] rounded-full"
+                                title="Anexar Imagem"
+                                disabled={!isConnected}
+                            >
+                                <Paperclip className="w-5 h-5" />
+                            </Button>
+
                             <Input
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}

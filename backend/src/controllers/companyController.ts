@@ -1,40 +1,49 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { searchPlaces, getPlaceDetails } from '../services/googleMapsService';
+import { searchPlaces, getPlaceDetails, getPlacePhotoUrl } from '../services/googleMapsService';
 import { AuthRequest } from '../middleware/auth';
+import { getUserPermissions } from '../middleware/authorization';
 
 const prisma = new PrismaClient();
 
 export const searchCompanies = async (req: AuthRequest, res: Response) => {
     try {
-        const { query, type } = req.query;
-        console.log(`🔎 SEARCH REQUEST: query="${query}", type="${type}"`);
+        const { query, type, limit, minRating, maxRating, minReviews, openNow, radius, location } = req.query;
+        console.log(`🔎 SEARCH REQUEST: query="${query}", limit=${limit}, rating=${minRating}-${maxRating}`);
 
         if (!query) {
-            console.log("❌ Missing query parameter");
             return res.status(400).json({ error: 'Query parameter is required' });
         }
 
-        const results = await searchPlaces(query as string, type as string);
+        const limitNum = limit ? parseInt(limit as string) : 20;
+
+        const results = await searchPlaces(query as string, {
+            type: type as string,
+            limit: limitNum,
+            minRating: minRating ? parseFloat(minRating as string) : undefined,
+            maxRating: maxRating ? parseFloat(maxRating as string) : undefined,
+            minReviews: minReviews ? parseInt(minReviews as string) : undefined,
+            openNow: openNow === 'true',
+            radius: radius ? parseInt(radius as string) : undefined,
+            location: location as string
+        });
 
         // LOG COST
         try {
-            // Text Search cost approx $0.032 per request (or approx R$ 0.20) - estimating R$ 0.20
-            // If we used Place Details it would be more.
-            // Keeping it simple: R$ 0.20 per search
-            const COST_PER_SEARCH = 0.20;
+            const pages = Math.ceil(results.length / 20); // Logging based on returned results usually 1 page if < 20
+            // Ideally we log based on attempted pages, but result count is a fair proxy for "successful" search volume
+            const COST_PER_SEARCH = 0.20 * Math.ceil(limitNum / 20); // Estimated based on limit requested
 
             await prisma.costLog.create({
                 data: {
-                    userId: req.user?.userId, // Assuming auth middleware adds user to req
-                    query: query as string,
+                    userId: req.user?.userId,
+                    query: `${query}`,
                     endpoint: 'textsearch',
                     cost: COST_PER_SEARCH
                 }
             });
         } catch (costError) {
             console.error("Failed to log cost:", costError);
-            // Don't modify main flow
         }
 
         // Check for duplicates
@@ -88,6 +97,10 @@ export const importCompany = async (req: AuthRequest, res: Response) => {
             console.error("Failed to log import cost:", costError);
         }
 
+        // Extract photo URL from Place Details response
+        const photoReference = details.photos?.[0]?.photo_reference;
+        const photoUrl = getPlacePhotoUrl(photoReference);
+
         const newCompany = await prisma.company.create({
             data: {
                 googlePlaceId: placeId,
@@ -102,7 +115,8 @@ export const importCompany = async (req: AuthRequest, res: Response) => {
                 size: customData?.size || 'unknown',
                 successChance: customData?.successChance ? parseFloat(customData.successChance) : null,
                 tips: customData?.tips,
-                folderId: folderId || null
+                folderId: folderId || null,
+                photoUrl: photoUrl
             }
         });
 
@@ -116,20 +130,55 @@ export const importCompany = async (req: AuthRequest, res: Response) => {
 
 export const getCompanies = async (req: AuthRequest, res: Response) => {
     try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        const permissions = await getUserPermissions(userId);
+        const where: any = {};
+
+        // Filter logic:
+        // 1. Super Admin or Admin -> Sees all (usually, assuming Admin has canViewAllLeads true by default or bypass)
+        // 2. canViewAllLeads -> Sees all
+        // 3. canViewOwnLeads -> Sees only assigned
+        // 4. Neither -> Sees none
+
+        if (permissions?.role !== 'SUPER_ADMIN' && permissions?.role !== 'ADMIN' && !permissions?.canViewAllLeads) {
+            if (permissions?.canViewOwnLeads) {
+                where.responsibleId = userId;
+            } else {
+                // If user cannot view all AND cannot view own, return empty
+                return res.json([]);
+            }
+        }
+
         const companies = await prisma.company.findMany({
+            where,
             include: { folder: true },
             orderBy: { createdAt: 'desc' }
         });
-        res.json(companies);
+
+        const safeCompanies = companies.map(c => ({
+            ...c,
+            tags: c.tags ? c.tags.split(',') : []
+        }));
+
+        res.json(safeCompanies);
     } catch (error) {
+        console.error('Get companies error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 }
 
 export const createCompany = async (req: AuthRequest, res: Response) => {
     try {
+        const data = { ...req.body };
+        if (Array.isArray(data.tags)) {
+            data.tags = data.tags.join(',');
+        }
         const company = await prisma.company.create({
-            data: req.body
+            data
         });
         res.status(201).json(company);
     } catch (error) {
@@ -140,9 +189,13 @@ export const createCompany = async (req: AuthRequest, res: Response) => {
 export const updateCompany = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
+        const data = { ...req.body };
+        if (Array.isArray(data.tags)) {
+            data.tags = data.tags.join(',');
+        }
         const company = await prisma.company.update({
             where: { id },
-            data: req.body
+            data
         });
         res.json(company);
     } catch (error) {

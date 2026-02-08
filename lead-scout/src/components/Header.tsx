@@ -1,5 +1,4 @@
-import { Plus, Bell, User, LogOut, Settings } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Plus, Bell, User, LogOut } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,49 +18,54 @@ interface HeaderProps {
 
 export function Header({ title, subtitle, onAddLead, user, onLogout }: HeaderProps) {
   return (
-    <header className="flex items-center justify-between mb-8">
+    <header className="flex items-center justify-between px-6 py-4 border-b border-border/30 bg-card/50 backdrop-blur-sm sticky top-0 z-40 transition-all duration-300">
       <div>
-        <h1 className="font-display text-3xl font-bold text-foreground">{title}</h1>
-        {subtitle && <p className="text-muted-foreground mt-1">{subtitle}</p>}
+        <h1 className="text-2xl font-bold text-foreground tracking-tight">{title}</h1>
+        {subtitle && <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>}
       </div>
 
       <div className="flex items-center gap-3">
-        <Button onClick={onAddLead} className="btn-primary gap-2">
+        <button
+          onClick={onAddLead}
+          className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium hover:brightness-110 transition-all shadow-lg shadow-primary/20 transform hover:-translate-y-0.5"
+        >
           <Plus className="w-4 h-4" />
           Novo Lead
-        </Button>
+        </button>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="p-2.5 rounded-lg bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors relative outline-none">
+            <button className="w-10 h-10 rounded-lg border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-all outline-none">
               <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-primary animate-pulse" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
+          <DropdownMenuContent align="end" className="w-80 bg-card border-border/50 backdrop-blur-xl">
             <DropdownMenuLabel>Notificações</DropdownMenuLabel>
-            <DropdownMenuSeparator />
+            <DropdownMenuSeparator className="bg-border/50" />
             <div className="p-4 text-center text-sm text-muted-foreground">
-              Nenhuma nova notificação de clientes.
+              Nenhuma nova notificação.
             </div>
           </DropdownMenuContent>
         </DropdownMenu>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-foreground border border-border hover:border-primary/50 transition-colors outline-none">
+            <button className="w-10 h-10 rounded-lg border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-all outline-none">
               <User className="w-5 h-5" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="w-56 bg-card border-border/50 backdrop-blur-xl">
             <DropdownMenuLabel>
-              <div className="flex flex-col">
-                <span>{user?.name || 'Usuário'}</span>
-                <span className="text-xs font-normal text-muted-foreground">{user?.email}</span>
+              <div className="flex flex-col space-y-1">
+                <span className="font-medium text-foreground">{user?.name || 'Usuário'}</span>
+                <span className="text-xs text-muted-foreground font-normal">{user?.email}</span>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onLogout} className="text-red-500 focus:text-red-500 cursor-pointer">
+            <DropdownMenuSeparator className="bg-border/50" />
+            <DropdownMenuItem
+              onClick={onLogout}
+              className="text-red-400 focus:text-red-400 focus:bg-red-500/10 cursor-pointer"
+            >
               <LogOut className="w-4 h-4 mr-2" />
               Sair
             </DropdownMenuItem>

@@ -49,20 +49,20 @@ export function LeadModal({ isOpen, onClose, onSave, editingLead }: LeadModalPro
   useEffect(() => {
     if (editingLead) {
       setFormData({
-        name: editingLead.name,
-        phone: editingLead.phone,
-        email: editingLead.email,
+        name: editingLead.name || '',
+        phone: editingLead.phone || '',
+        email: editingLead.email || '',
         type: editingLead.type,
         activityBranch: editingLead.activityBranch,
         size: editingLead.size,
-        location: editingLead.location,
-        address: editingLead.address,
-        website: editingLead.website,
-        successChance: editingLead.successChance,
-        tips: editingLead.tips,
-        contacted: editingLead.contacted,
-        folderId: editingLead.folderId,
-        comments: editingLead.comments,
+        location: editingLead.location || '',
+        address: editingLead.address || '',
+        website: editingLead.website || '',
+        successChance: editingLead.successChance || 50,
+        tips: editingLead.tips || '',
+        contacted: editingLead.contacted || false,
+        folderId: editingLead.folderId || null,
+        comments: editingLead.comments || '',
       });
     } else {
       setFormData(defaultFormData);

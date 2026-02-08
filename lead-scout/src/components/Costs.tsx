@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import axios from 'axios';
-import { CircleDollarSign, Search } from 'lucide-react';
+import { Info, Search } from 'lucide-react';
 
 interface CostStats {
     totalCost: number;
@@ -32,75 +31,75 @@ export function Costs() {
     }, []);
 
     if (loading) {
-        return <div>Carregando custos...</div>;
+        return <div className="p-8 text-center text-muted-foreground">Carregando custos...</div>;
     }
 
     if (!stats) {
-        return <div>Erro ao carregar dados.</div>;
+        return <div className="p-8 text-center text-red-400">Erro ao carregar dados.</div>;
     }
 
     return (
-        <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">Custo Total</CardTitle>
-                        <CircleDollarSign className="w-4 h-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">R$ {stats.totalCost.toFixed(2)}</div>
-                        <p className="text-xs text-muted-foreground">Gasto total estimado com API</p>
-                    </CardContent>
-                </Card>
-                {/* Add more summary cards if needed */}
+        <div className="space-y-6 animate-fade-in">
+            {/* Custo Total */}
+            <div className="bg-card/60 backdrop-blur-sm border border-border/30 rounded-xl p-6 max-w-md shadow-xl hover:border-primary/30 transition-all">
+                <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-muted-foreground">Custo Total</span>
+                    <button className="text-muted-foreground hover:text-foreground transition-colors">
+                        <Info className="w-4 h-4" />
+                    </button>
+                </div>
+                <p className="text-3xl font-bold text-foreground">R$ {stats.totalCost.toFixed(2).replace('.', ',')}</p>
+                <p className="text-sm text-primary mt-1">Gasto total estimado com API</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Custo por Usuário</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            {stats.costByUser.map((user) => (
-                                <div key={user.userId} className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                                            <span className="font-bold text-primary">{user.name.charAt(0)}</span>
-                                        </div>
-                                        <div>
-                                            <p className="font-medium text-sm">{user.name}</p>
-                                            <p className="text-xs text-muted-foreground">{user.email}</p>
-                                        </div>
+                {/* Custo por Usuário */}
+                <div className="bg-card/60 backdrop-blur-sm border border-border/30 rounded-xl p-6 shadow-xl">
+                    <h3 className="font-semibold text-foreground mb-4">Custo por Usuário</h3>
+                    <div className="space-y-4">
+                        {stats.costByUser.map((user) => (
+                            <div key={user.userId} className="flex items-center justify-between p-3 rounded-lg hover:bg-secondary/30 transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold">
+                                        {user.name.charAt(0).toUpperCase()}
                                     </div>
-                                    <span className="font-bold">R$ {user.totalCost.toFixed(2)}</span>
+                                    <div>
+                                        <p className="font-medium text-foreground">{user.name}</p>
+                                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                                    </div>
                                 </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
+                                <span className="font-semibold text-foreground">R$ {user.totalCost.toFixed(2).replace('.', ',')}</span>
+                            </div>
+                        ))}
+                        {stats.costByUser.length === 0 && (
+                            <p className="text-sm text-muted-foreground text-center py-4">Nenhum custo registrado por usuário.</p>
+                        )}
+                    </div>
+                </div>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Buscas Recentes</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4 max-h-[400px] overflow-y-auto">
-                            {stats.recentLogs.map((log) => (
-                                <div key={log.id} className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0">
-                                    <div className="flex items-start gap-3">
-                                        <Search className="w-4 h-4 mt-1 text-muted-foreground" />
-                                        <div>
-                                            <p className="text-sm font-medium">{log.query}</p>
-                                            <p className="text-xs text-muted-foreground">por {log.userName} em {new Date(log.timestamp).toLocaleDateString()} {new Date(log.timestamp).toLocaleTimeString()}</p>
-                                        </div>
+                {/* Buscas Recentes */}
+                <div className="bg-card/60 backdrop-blur-sm border border-border/30 rounded-xl p-6 shadow-xl">
+                    <h3 className="font-semibold text-foreground mb-4">Buscas Recentes</h3>
+                    <div className="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+                        {stats.recentLogs.map((log) => (
+                            <div key={log.id} className="flex items-start justify-between gap-4 p-3 rounded-lg hover:bg-secondary/30 transition-colors border-b border-border/10 last:border-0">
+                                <div className="flex items-start gap-3">
+                                    <Search className="w-4 h-4 text-muted-foreground mt-1 flex-shrink-0" />
+                                    <div>
+                                        <p className="font-medium text-foreground line-clamp-2">{log.query}</p>
+                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                            por <span className="text-primary">{log.userName}</span> em {new Date(log.timestamp).toLocaleDateString()} {new Date(log.timestamp).toLocaleTimeString()}
+                                        </p>
                                     </div>
-                                    <span className="text-sm font-semibold text-red-500">- R$ {log.cost.toFixed(2)}</span>
                                 </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
+                                <span className="text-sm font-medium text-red-400 whitespace-nowrap">- R$ {log.cost.toFixed(2).replace('.', ',')}</span>
+                            </div>
+                        ))}
+                        {stats.recentLogs.length === 0 && (
+                            <p className="text-sm text-muted-foreground text-center py-4">Nenhuma busca recente.</p>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );

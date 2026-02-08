@@ -15,6 +15,19 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+            localStorage.removeItem('token');
+            if (window.location.pathname !== '/login') {
+                window.location.href = '/login';
+            }
+        }
+        return Promise.reject(error);
+    }
+);
+
 export const auth = {
     login: async (email: string, password: string) => {
         const response = await api.post('/auth/login', { email, password });
@@ -42,8 +55,8 @@ export const companies = {
     delete: async (id: string) => {
         await api.delete(`/companies/${id}`);
     },
-    search: async (query: string, type?: string) => {
-        const response = await api.get(`/companies/search`, { params: { query, type } });
+    search: async (query: string, options?: { type?: string, limit?: number, minRating?: number, maxRating?: number, minReviews?: number, openNow?: boolean, radius?: number, location?: string }) => {
+        const response = await api.get(`/companies/search`, { params: { query, ...options } });
         return response.data;
     },
     import: async (placeId: string, folderId?: string, customData?: any) => {

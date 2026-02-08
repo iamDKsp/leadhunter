@@ -7,6 +7,66 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ==================== ACCESS CONTROL ====================
+
+model AccessGroup {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  description String?
+  permissions Permission?
+  users       User[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("access_groups")
+}
+
+model Permission {
+  id            String      @id @default(uuid())
+  accessGroupId String      @unique
+  accessGroup   AccessGroup @relation(fields: [accessGroupId], references: [id], onDelete: Cascade)
+  
+  // Lead Permissions
+  canSearchLeads      Boolean @default(false)  // Pode pesquisar novos leads na API
+  canViewAllLeads     Boolean @default(false)  // Pode ver todos os leads (admin)
+  canViewOwnLeads     Boolean @default(true)   // Pode ver leads atribuídos a si
+  canManageLeads      Boolean @default(false)  // Pode criar/editar/excluir leads
+  canAssignLeads      Boolean @default(false)  // Pode atribuir leads a vendedores
+  
+  // Module Permissions
+  canViewCRM          Boolean @default(true)   // Acesso ao CRM
+  canViewDashboard    Boolean @default(true)   // Acesso ao Dashboard
+  canViewCosts        Boolean @default(false)  // Pode ver custos de API
+  canViewChat         Boolean @default(false)  // Acesso ao chat WhatsApp
+  
+  // Admin Permissions
+  canManageUsers      Boolean @default(false)  // Pode gerenciar usuários
+  canManageGroups     Boolean @default(false)  // Pode gerenciar grupos de acesso
+  canManageFolders    Boolean @default(false)  // Pode gerenciar pastas
+  
+  // Permissions
+  canViewPersonal     Boolean @default(true)
+  canViewMonitoring   Boolean @default(false)
+  canUseOwnWhatsApp   Boolean @default(false) // Permite conectar Whats proprio
+
+  @@map("permissions")
+}
+
+model LeadAssignmentHistory {
+  id              String   @id @default(uuid())
+  companyId       String
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  previousUserId  String?
+  newUserId       String?
+  assignedById    String
+  assignedBy      User     @relation("AssignmentsMade", fields: [assignedById], references: [id])
+  createdAt       DateTime @default(now())
+
+  @@map("lead_assignment_history")
+}
+
+// ==================== USERS ====================
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -15,9 +75,30 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   folders      Folder[]
+  interfacePreference String @default("BOTH") // "PC", "MOBILE", "BOTH"
+  
+  // Access Control
+  role          String       @default("SELLER") // "SUPER_ADMIN", "ADMIN", "SELLER"
+  accessGroupId String?
+  accessGroup   AccessGroup? @relation(fields: [accessGroupId], references: [id])
+  
+  // WhatsApp Config
+  useOwnWhatsApp Boolean @default(false) // Se true, tenta usar sessão do usuario. Se false, usa global.
+
+  // Lead Assignment
+  assignedLeads       Company[]               @relation("LeadResponsible")
+  assignmentsMade     LeadAssignmentHistory[] @relation("AssignmentsMade")
+  
+  // Personal & Monitoring Relations
+  tasks               Task[]
+  goals               Goal[]
+  activityLogs        ActivityLog[]
+  sessions            UserSession[]
 
   @@map("users")
 }
+
+// ==================== LEADS ====================
 
 model Company {
   id            String   @id @default(uuid())
@@ -34,13 +115,26 @@ model Company {
   longitude     Float?
   successChance Float?   // 0-100
   tips          String?
+  value         Float?   // Estimated value of the lead
   status        String?  // e.g., contacted, new
   contacted     Boolean  @default(false)
+  stageId       String?  // CRM stage ID
+  tags          String?  // Comma separated tags if needed, or relation
   website       String?
   comments      String?
+  photoUrl      String?  // URL da foto do Google Places
   
   folderId      String?
   folder        Folder?  @relation(fields: [folderId], references: [id])
+  
+  // Lead Assignment
+  responsibleId String?
+  responsible   User?   @relation("LeadResponsible", fields: [responsibleId], references: [id])
+  assignmentHistory LeadAssignmentHistory[]
+  
+  // Personal Module Relations
+  tasks         Task[]
+  activityLogs  ActivityLog[]
   
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -88,4 +182,68 @@ model CostLog {
   timestamp DateTime @default(now())
 
   @@map("cost_logs")
+}
+
+// ==================== PERSONAL MODULE ====================
+
+model Task {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  companyId   String?
+  company     Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dueDate     DateTime?
+  priority    String   @default("medium") // high, medium, low
+  type        String   @default("general") // general, call, message, email, meeting
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("tasks")
+}
+
+model Goal {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  target    Int
+  current   Int      @default(0)
+  unit      String   // "leads", "calls", "meetings", "sales"
+  icon      String   @default("leads")
+  weekStart DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("goals")
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // "call", "email", "meeting", "task", "proposal"
+  title     String
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  status    String   @default("completed") // completed, scheduled, pending
+  createdAt DateTime @default(now())
+
+  @@map("activity_logs")
+}
+
+// ==================== MONITORING MODULE ====================
+
+model UserSession {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status        String    @default("offline") // online, away, offline
+  lastActivity  DateTime  @default(now())
+  sessionStart  DateTime  @default(now())
+  sessionEnd    DateTime?
+
+  @@map("user_sessions")
 }

@@ -16,12 +16,24 @@ export interface Lead {
   website: string;
   successChance: number;
   tips: string;
+  value?: number;
   contacted: boolean;
+  stageId?: string; // CRM Stage ID
+  tags: string[];
   folderId: string | null;
   createdAt: Date;
   updatedAt: Date;
   comments: string;
+  photoUrl?: string; // Google Places photo URL
 }
+
+export interface Stage {
+  id: string;
+  name: string;
+  color: string;
+  order: number;
+}
+
 
 export interface Folder {
   id: string;
