@@ -3,9 +3,9 @@ import { User } from '@/types/auth'; // Import User type
 import { canViewPage } from '@/utils/permissions'; // Import permission helper
 import {
   LayoutDashboard,
-  Users,
+  Layers, // Gestão de Leads
   TrendingUp,
-  Search,
+  Globe, // Prospecção
   FolderPlus,
   Settings,
   ChevronLeft,
@@ -14,7 +14,10 @@ import {
   Shield,
   User as UserIcon,
   Eye,
-  MessageSquare
+  MessageSquare,
+  Users as UsersIcon, // Equipe
+  BarChart3, // Análises
+  DollarSign // Custos
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
@@ -26,23 +29,24 @@ interface SidebarProps {
   onAddFolder: () => void;
   isCollapsed: boolean;
   toggleSidebar: () => void;
-  user?: User | null; // Add user prop
+  user?: User | null;
+  onOpenSettings?: () => void;
 }
 
-export function Sidebar({ folders, activeView, onViewChange, onAddFolder, isCollapsed, toggleSidebar, user }: SidebarProps) {
+export function Sidebar({ folders, activeView, onViewChange, onAddFolder, isCollapsed, toggleSidebar, user, onOpenSettings }: SidebarProps) {
   const navigate = useNavigate();
 
   const menuItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', id: 'dashboard' },
+    { icon: LayoutDashboard, label: 'Gestão de Leads', id: 'management' },
     { icon: UserIcon, label: 'Pessoal', id: 'personal' },
     { icon: MessageSquare, label: 'Conversas', id: 'conversas' },
-    { icon: Users, label: 'Todos os Leads', id: 'leads' },
-    { icon: Users, label: 'Usuários', id: 'users' },
+    { icon: Layers, label: 'CRM', id: 'leads' },
+    { icon: Globe, label: 'Prospecção', id: 'search' },
     { icon: Eye, label: 'Monitoramento', id: 'monitoring' },
+    { icon: UsersIcon, label: 'Equipe', id: 'users' },
     { icon: Shield, label: 'Grupos de Acesso', id: 'access-groups' },
-    { icon: TrendingUp, label: 'Custos', id: 'costs' },
-    { icon: Search, label: 'Buscar Empresas', id: 'search' },
-    { icon: TrendingUp, label: 'Análises', id: 'analytics' },
+    { icon: DollarSign, label: 'Custos', id: 'costs' },
+    { icon: BarChart3, label: 'Análises', id: 'analytics' },
   ];
 
   // Filter menu items based on permissions
@@ -73,7 +77,13 @@ export function Sidebar({ folders, activeView, onViewChange, onAddFolder, isColl
           {visibleMenuItems.map((item) => (
             <li key={item.id}>
               <button
-                onClick={() => onViewChange(item.id)}
+                onClick={() => {
+                  if (item.id === 'settings') {
+                    onOpenSettings?.();
+                  } else {
+                    onViewChange(item.id);
+                  }
+                }}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-300",
                   activeView === item.id
@@ -139,10 +149,10 @@ export function Sidebar({ folders, activeView, onViewChange, onAddFolder, isColl
       {/* Footer */}
       <div className="p-3 border-t border-border/30 bg-card/50">
         <button
-          onClick={() => onViewChange('settings')}
+          onClick={onOpenSettings}
           className={cn(
             "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground transition-all duration-300",
-            activeView === 'settings' && "bg-primary/20 text-primary",
+            // activeView === 'settings' && "bg-primary/20 text-primary", // Settings is modal now, might not need active state or handle it differently
             isCollapsed && "justify-center px-2"
           )}
           title={isCollapsed ? "Configurações" : undefined}

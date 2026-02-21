@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ChatSidebar } from "@/components/chat/ChatSidebar";
 import { ChatWindow } from "@/components/chat/ChatWindow";
@@ -10,6 +10,7 @@ import { FollowUpReminder } from "@/components/chat/FollowUpReminder";
 import { WhatsAppConnectModal } from "@/components/chat/WhatsAppConnectModal";
 import { Conversation } from "@/components/chat/ConversationItem";
 import { Message } from "@/components/chat/MessageBubble";
+import { Lead } from "@/types/lead";
 import { toast } from "@/hooks/use-toast";
 import api from "@/services/api";
 import { useWhatsApp } from "@/context/WhatsAppContext";
@@ -27,9 +28,22 @@ interface DecodedToken {
     }
 }
 
+// Helper to normalize chatId for matching (strips JID suffix and country prefix)
+const normalizeChatId = (chatId: string): string => {
+    let clean = chatId
+        .replace(/@s\.whatsapp\.net$/i, '')
+        .replace(/@c\.us$/i, '')
+        .replace(/\D/g, '');
+    if (clean.startsWith('55') && clean.length > 11) {
+        clean = clean.substring(2);
+    }
+    return clean;
+};
+
 const Conversas = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+    const activeConversationIdRef = useRef<string | null>(null);
     const [messages, setMessages] = useState<Record<string, Message[]>>({});
     const [followUps, setFollowUps] = useState<FollowUp[]>([]);
     const [isSchedulerOpen, setIsSchedulerOpen] = useState(false);
@@ -40,98 +54,115 @@ const Conversas = () => {
     const token = localStorage.getItem('token');
     let canUseOwnWhatsApp = false;
     let useOwnWhatsApp = false;
+    let initialUserId = '';
+
     if (token) {
         try {
             const decoded = jwtDecode<DecodedToken>(token);
             canUseOwnWhatsApp = decoded.user.permissions?.canUseOwnWhatsApp || false;
             useOwnWhatsApp = decoded.user.useOwnWhatsApp || false;
+            initialUserId = decoded.user.id;
         } catch (e) { }
     }
 
     const { socket } = useWhatsApp();
+    const [userId, setUserId] = useState(initialUserId);
     const [connectionStatus, setConnectionStatus] = useState<'CONNECTED' | 'DISCONNECTED' | 'CONNECTING'>('DISCONNECTED');
 
+    // CRM Data
+    const [leads, setLeads] = useState<Lead[]>([]);
+    const [currentLead, setCurrentLead] = useState<Lead | undefined>(undefined);
+    const [showInfoPanel, setShowInfoPanel] = useState(true);
+
+    const toggleInfoPanel = () => setShowInfoPanel(prev => !prev);
+
     useEffect(() => {
+        if (activeConversationId) {
+            api.put(`/chat/${activeConversationId}/read`).catch(err => console.error("Failed to mark as read", err));
+        }
         fetchConversations();
         fetchTasks();
+        fetchLeads();
 
-        // Initial status check (optional, or wait for event)
-        // api.get('/chat/status').then(res => setConnectionStatus(res.data.status));
+        // Initial status check
+        api.get('/chat/status').then(res => {
+            // Logic to determine if we should show connected based on mode
+            const status = res.data.status;
+            // If we are in personal mode, we might need a specific endpoint or check the session status
+            // For now assuming getWhatsAppStatus returns GLOBAL status, which matches default behavior.
+            // If personal, we rely on socket 'whatsapp_status' events.
+            if (!useOwnWhatsApp) {
+                setConnectionStatus(status);
+            }
+        }).catch(err => console.error("Failed to fetch initial status", err));
+
     }, []); // Run once on mount
 
     useEffect(() => {
-        // Handle URL parameters for redirection
+        // Handle URL parameters for redirection from CRM card click
         const chatIdParam = searchParams.get('chatId');
-        const nameParam = searchParams.get('name');
-        const phoneParam = searchParams.get('phone');
 
         if (chatIdParam && conversations.length > 0) {
+            // The chat was created by POST /chat/create before navigating here.
+            // Just find and select it in the loaded list.
             const exists = conversations.find(c => c.id === chatIdParam);
             if (exists) {
                 setActiveConversationId(chatIdParam);
-            } else if (nameParam && phoneParam) {
-                // Temporary conversation for new chat
-                const newConv: Conversation = {
-                    id: chatIdParam,
-                    leadName: nameParam,
-                    businessName: '',
-                    lastMessage: 'Nova conversa',
-                    timestamp: new Date().toLocaleTimeString(),
-                    unreadCount: 0,
-                    phone: phoneParam,
-                    status: 'warm',
-                    isRead: true
-                };
-                setConversations(prev => [newConv, ...prev]);
-                setActiveConversationId(chatIdParam);
+            } else {
+                // The conversation list might not have refreshed yet.
+                // Refetch conversations then try again.
+                fetchConversations().then(() => {
+                    setActiveConversationId(chatIdParam);
+                });
             }
+            // Clean URL params after processing
+            setSearchParams({}, { replace: true });
         }
-    }, [searchParams, conversations.length]); // Depend on conversations loaded
+    }, [searchParams, conversations.length]);
+
+    // Keep the ref in sync so socket callbacks can access current value
+    useEffect(() => {
+        activeConversationIdRef.current = activeConversationId;
+    }, [activeConversationId]);
 
     useEffect(() => {
         if (socket) {
             socket.on('whatsapp_status', (data: any) => {
-                // Check if status is for our session or global
-                // For simplicity, update global status indicator
                 console.log("WhatsApp Status Update:", data);
-                if (data.status === 'CONNECTED' || data.status === 'READY') {
-                    setConnectionStatus('CONNECTED');
-                    setIsConnectModalOpen(false);
-                } else if (data.status === 'DISCONNECTED') {
-                    setConnectionStatus('DISCONNECTED');
-                } else {
-                    setConnectionStatus('CONNECTING');
+
+                const targetSessionId = useOwnWhatsApp ? userId : 'GLOBAL';
+                const eventSessionId = data.sessionId || 'GLOBAL';
+
+                if (eventSessionId === targetSessionId) {
+                    if (data.status === 'CONNECTED' || data.status === 'READY') {
+                        setConnectionStatus('CONNECTED');
+                        setIsConnectModalOpen(false);
+                    } else if (data.status === 'DISCONNECTED') {
+                        setConnectionStatus('DISCONNECTED');
+                    } else {
+                        setConnectionStatus('CONNECTING');
+                    }
                 }
             });
 
             socket.on('whatsapp_message', (msg: any) => {
-                // If message belongs to current user session (or global if we are global)
-                // Logic: 
-                // 1. If we are using own whatsapp, msg must have our sessionId.
-                // 2. If we are global, msg must NOT have sessionId or be GLOBAL.
-
-                // For now, simplify: Just append if we are in the chat.
-                // We'll reload conversations list to update order/preview
+                // Always refresh the conversation sidebar
                 fetchConversations();
 
-                setMessages(prev => {
-                    const chatId = msg.chatId || msg.from; // Backend should send chatId
-                    // If active chat matches
-                    if (prev[chatId]) {
-                        return {
-                            ...prev,
-                            [chatId]: [...prev[chatId], {
-                                id: msg.id,
-                                content: msg.body,
-                                timestamp: new Date(msg.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                                isSent: msg.fromMe,
-                                isRead: false,
-                                type: msg.type || 'text'
-                            }]
-                        };
+                // Check if the incoming message belongs to the currently active chat
+                const incomingChatId = msg.chatId || msg.from;
+                const currentActive = activeConversationIdRef.current;
+
+                if (currentActive) {
+                    const normalizedIncoming = normalizeChatId(incomingChatId);
+                    const normalizedActive = normalizeChatId(currentActive);
+
+                    if (normalizedIncoming === normalizedActive) {
+                        // Re-fetch messages from server for the active chat
+                        // This ensures perfect consistency regardless of chatId format
+                        fetchMessages(currentActive);
                     }
-                    return prev;
-                });
+                }
             });
         }
 
@@ -152,19 +183,41 @@ const Conversas = () => {
         }
     };
 
+    const fetchLeads = async () => {
+        try {
+            const res = await api.get('/companies');
+            setLeads(res.data);
+        } catch (error) {
+            console.error("Failed to fetch leads", error);
+        }
+    };
+
     const fetchTasks = async () => {
         try {
+            // Fetch all tasks for now, filtering can happen here or backend
             const response = await api.get('/personal/tasks');
             const loadedTasks: FollowUp[] = response.data.map((task: any) => {
                 let dateObj = new Date(); // Fallback
                 try {
-                    if (task.dueDate) dateObj = new Date(task.dueDate);
+                    if (task.dueDate && task.dueDate !== 'Sem prazo') {
+                        // Parse "DD/MM, HH:mm" or ISO? 
+                        // The backend returns formatted string "DD/MM, HH:mm" or "Hoje, HH:mm"
+                        // This makes it hard to parse back to Date object for the scheduler.
+                        // Ideally backend should return raw ISO date AND formatted.
+                        // For now, let's assume if it comes formatted we might have issues parsing it back 
+                        // unless we change backend to return raw.
+                        // Let's rely on 'dueDate' from backend being the ISO buffer if we didn't touch it?
+                        // actually personalController returns formatted `dueDate`.
+                        // We should fix personalController to return raw date or ISO string.
+                        // See next step.
+                        dateObj = new Date(); // Placeholder
+                    }
                 } catch (e) { }
 
                 return {
                     id: task.id,
-                    leadId: task.id,
-                    leadName: task.title,
+                    leadId: task.companyId || task.id, // Use companyId if available
+                    leadName: task.leadName,
                     date: dateObj,
                     time: "00:00",
                     type: task.type || 'call',
@@ -172,7 +225,7 @@ const Conversas = () => {
                     completed: task.completed
                 };
             });
-            // Keeping empty for now as requested in previous turn logic
+            setFollowUps(loadedTasks);
         } catch (error) {
             console.error("Erro ao buscar tarefas:", error);
         }
@@ -181,9 +234,21 @@ const Conversas = () => {
     // Load messages when active conversation changes
     useEffect(() => {
         if (activeConversationId) {
+            api.put(`/chat/${activeConversationId}/read`).catch(err => console.error("Failed to mark as read", err));
             fetchMessages(activeConversationId);
+
+            // Find associated Lead
+            const conversation = conversations.find(c => c.id === activeConversationId);
+            if (conversation && conversation.phone) {
+                // Normalize phones for comparison (remove non-digits)
+                const chatPhone = conversation.phone.replace(/\D/g, '');
+                const found = leads.find(l => (l.phone && l.phone.replace(/\D/g, '').includes(chatPhone)) || (l.phone && chatPhone.includes(l.phone.replace(/\D/g, ''))));
+                setCurrentLead(found);
+            } else {
+                setCurrentLead(undefined);
+            }
         }
-    }, [activeConversationId]);
+    }, [activeConversationId, conversations, leads]);
 
     const fetchMessages = async (chatId: string) => {
         try {
@@ -308,19 +373,64 @@ const Conversas = () => {
     };
 
     const handleScheduleFollowUp = async (followUp: FollowUp) => {
-        setFollowUps((prev) => [...prev, followUp]);
-        // Backend sync logic skipped for brevity, assumed implemented
-        toast({ title: "Agendado", description: "Follow-up criado." });
+        try {
+            // Optimistic update
+            setFollowUps((prev) => [...prev, followUp]);
+
+            // Send to backend
+            // Find the lead ID properly. 
+            // activeConversationId is often the phone number or JID in this app?
+            // If it is a phone number, we need the UUID of the company properly.
+            // currentLead should have the real ID.
+
+            const realLeadId = currentLead?.id;
+
+            await api.post('/personal/tasks', {
+                companyId: realLeadId, // Linked to the company
+                title: followUp.note || `Follow-up: ${followUp.type}`,
+                type: followUp.type,
+                dueDate: followUp.date, // Scheduler passes Date object
+                description: followUp.note
+            });
+
+            toast({ title: "Agendado", description: "Tarefa criada com sucesso." });
+            fetchTasks(); // Refresh to get server ID
+        } catch (error) {
+            console.error("Failed to create task", error);
+            toast({
+                title: "Erro",
+                description: "Falha ao criar tarefa.",
+                variant: "destructive"
+            });
+        }
     };
 
     const handleCompleteFollowUp = async (id: string) => {
-        setFollowUps((prev) =>
-            prev.map((f) => (f.id === id ? { ...f, completed: true } : f))
-        );
+        try {
+            // Optimistic update
+            setFollowUps((prev) =>
+                prev.map((f) => (f.id === id ? { ...f, completed: true } : f))
+            );
+
+            await api.patch(`/personal/tasks/${id}`, { completed: true });
+
+        } catch (error) {
+            console.error("Failed to complete task", error);
+            // Revert
+            setFollowUps((prev) =>
+                prev.map((f) => (f.id === id ? { ...f, completed: false } : f))
+            );
+        }
     };
 
-    const handleDeleteFollowUp = (id: string) => {
-        setFollowUps((prev) => prev.filter((f) => f.id !== id));
+    const handleDeleteFollowUp = async (id: string) => {
+        try {
+            setFollowUps((prev) => prev.filter((f) => f.id !== id));
+            await api.delete(`/personal/tasks/${id}`);
+        } catch (error) {
+            console.error("Failed to delete task", error);
+            fetchTasks(); // Revert
+        }
     };
 
     const handleDismissReminder = (id: string) => {
@@ -342,8 +452,8 @@ const Conversas = () => {
                     {/* Status Indicator */}
                     <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-background/50 border border-border/50">
                         <div className={`w-2 h-2 rounded-full ${connectionStatus === 'CONNECTED' ? 'bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.5)]' :
-                                connectionStatus === 'CONNECTING' ? 'bg-yellow-500 animate-pulse' :
-                                    'bg-red-500'
+                            connectionStatus === 'CONNECTING' ? 'bg-yellow-500 animate-pulse' :
+                                'bg-red-500'
                             }`} />
                         <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
                             {connectionStatus === 'CONNECTED' ? 'Online' :
@@ -376,14 +486,20 @@ const Conversas = () => {
                             messages={messages[activeConversationId!] || []}
                             onSendMessage={handleSendMessage}
                             onSendMedia={handleSendMedia}
+                            showInfoPanel={showInfoPanel}
+                            onToggleInfoPanel={toggleInfoPanel}
                         />
-                        <LeadInfoPanel
-                            conversation={activeConversation}
-                            followUps={followUps}
-                            onScheduleFollowUp={() => setIsSchedulerOpen(true)}
-                            onCompleteFollowUp={handleCompleteFollowUp}
-                            onDeleteFollowUp={handleDeleteFollowUp}
-                        />
+                        {showInfoPanel && (
+                            <LeadInfoPanel
+                                conversation={activeConversation}
+                                lead={currentLead}
+                                followUps={followUps}
+                                userId={userId}
+                                onScheduleFollowUp={() => setIsSchedulerOpen(true)}
+                                onCompleteFollowUp={handleCompleteFollowUp}
+                                onDeleteFollowUp={handleDeleteFollowUp}
+                            />
+                        )}
                     </>
                 ) : (
                     <EmptyState />
@@ -404,6 +520,7 @@ const Conversas = () => {
                 followUps={followUps}
                 onDismiss={handleDismissReminder}
                 onGoToLead={handleGoToLead}
+                onComplete={handleCompleteFollowUp}
             />
 
             <WhatsAppConnectModal

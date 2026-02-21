@@ -1,13 +1,14 @@
-import { DollarSign, TrendingUp, Users, Target } from "lucide-react";
+import { DollarSign, TrendingUp, Users, Target, CheckCircle2 } from "lucide-react";
 
 interface TotalValueCardProps {
-    totalValue: number;
+    potentialValue: number;
+    confirmedValue: number;
     leadsCount: number;
     averageValue: number;
     conversionRate: number;
 }
 
-const TotalValueCard = ({ totalValue, leadsCount, averageValue, conversionRate }: TotalValueCardProps) => {
+const TotalValueCard = ({ potentialValue, confirmedValue, leadsCount, averageValue, conversionRate }: TotalValueCardProps) => {
     return (
         <div className="bg-card/60 backdrop-blur-sm border border-border/50 rounded-xl p-6 animate-fade-in" style={{ animationDelay: "250ms" }}>
             <div className="flex items-center gap-3 mb-6">
@@ -20,10 +21,20 @@ const TotalValueCard = ({ totalValue, leadsCount, averageValue, conversionRate }
                 </div>
             </div>
 
-            <div className="text-center py-4 px-4 rounded-xl bg-gradient-to-br from-green-500/10 via-green-500/5 to-transparent border border-green-500/20 mb-4">
-                <p className="text-3xl font-bold text-green-500">
-                    R$ {totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </p>
+            {/* Split Values */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="text-center py-4 px-3 rounded-xl bg-gradient-to-br from-yellow-500/10 via-yellow-500/5 to-transparent border border-yellow-500/20">
+                    <p className="text-xs text-muted-foreground mb-1">Em Potencial</p>
+                    <p className="text-xl font-bold text-yellow-500">
+                        R$ {potentialValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                </div>
+                <div className="text-center py-4 px-3 rounded-xl bg-gradient-to-br from-green-500/10 via-green-500/5 to-transparent border border-green-500/20">
+                    <p className="text-xs text-muted-foreground mb-1">Previsto</p>
+                    <p className="text-xl font-bold text-green-500">
+                        R$ {confirmedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                </div>
             </div>
 
             <div className="grid grid-cols-3 gap-3">

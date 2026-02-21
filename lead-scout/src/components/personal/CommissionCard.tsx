@@ -2,30 +2,41 @@ import { Wallet, Award, TrendingUp, Gift } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 interface CommissionCardProps {
-    totalValue: number;
-    completedSystems: number;
+    potentialValue: number;
+    confirmedValue: number;
+    completedSales: number;
     commissionRate?: number;
     bonusRate?: number;
-    systemsForBonus?: number;
+    salesForBonus?: number;
 }
 
 const CommissionCard = ({
-    totalValue,
-    completedSystems,
+    potentialValue,
+    confirmedValue,
+    completedSales,
     commissionRate = 15,
     bonusRate = 15,
-    systemsForBonus = 5,
+    salesForBonus = 5,
 }: CommissionCardProps) => {
-    const bonusMultiplier = Math.floor(completedSystems / systemsForBonus);
-    const totalBonusRate = bonusMultiplier * bonusRate;
-    const effectiveRate = commissionRate + totalBonusRate;
+    // Bonus: at every 5th sale, you earn +15% on that sale (totaling 30%)
+    // The bonus is applied to the confirmed value of qualifying sales
+    const bonusMultiplier = Math.floor(completedSales / salesForBonus);
+    const hasBonusActive = bonusMultiplier > 0;
 
-    const baseCommission = (totalValue * commissionRate) / 100;
-    const bonusCommission = (totalValue * totalBonusRate) / 100;
+    // Base commission: 15% of confirmed value
+    const baseCommission = (confirmedValue * commissionRate) / 100;
+
+    // Potential commission: 15% of total potential value
+    const potentialCommission = (potentialValue * commissionRate) / 100;
+
+    // Bonus commission: the extra 15% earned on qualifying milestone sales
+    const bonusCommission = hasBonusActive ? (confirmedValue * bonusRate) / 100 : 0;
+
     const totalCommission = baseCommission + bonusCommission;
+    const effectiveRate = hasBonusActive ? commissionRate + bonusRate : commissionRate;
 
-    const progressToNextBonus = (completedSystems % systemsForBonus) / systemsForBonus * 100;
-    const systemsUntilNextBonus = systemsForBonus - (completedSystems % systemsForBonus);
+    const progressToNextBonus = (completedSales % salesForBonus) / salesForBonus * 100;
+    const salesUntilNextBonus = salesForBonus - (completedSales % salesForBonus);
 
     return (
         <div className="bg-card/60 backdrop-blur-sm border border-border/50 rounded-xl p-6 animate-fade-in" style={{ animationDelay: "450ms" }}>
@@ -41,7 +52,7 @@ const CommissionCard = ({
 
             {/* Main Commission Display */}
             <div className="text-center py-6 px-4 rounded-xl bg-gradient-to-br from-yellow-500/10 via-yellow-500/5 to-transparent border border-yellow-500/20 mb-6">
-                <p className="text-sm text-muted-foreground mb-2">Comissão Total Estimada</p>
+                <p className="text-sm text-muted-foreground mb-2">Comissão Confirmada</p>
                 <p className="text-4xl font-bold text-yellow-500">
                     R$ {totalCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
@@ -55,21 +66,21 @@ const CommissionCard = ({
             <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="p-4 rounded-lg bg-background/50 border border-border/30">
                     <div className="flex items-center gap-2 mb-2">
-                        <Wallet className="w-4 h-4 text-primary" />
-                        <span className="text-xs text-muted-foreground">Comissão Base ({commissionRate}%)</span>
+                        <Wallet className="w-4 h-4 text-yellow-500" />
+                        <span className="text-xs text-muted-foreground">Em Potencial ({commissionRate}%)</span>
                     </div>
-                    <p className="text-xl font-bold text-foreground">
-                        R$ {baseCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    <p className="text-xl font-bold text-yellow-500">
+                        R$ {potentialCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </p>
                 </div>
 
                 <div className="p-4 rounded-lg bg-background/50 border border-border/30">
                     <div className="flex items-center gap-2 mb-2">
                         <Gift className="w-4 h-4 text-green-500" />
-                        <span className="text-xs text-muted-foreground">Bônus ({totalBonusRate}%)</span>
+                        <span className="text-xs text-muted-foreground">Prevista ({commissionRate}%)</span>
                     </div>
                     <p className="text-xl font-bold text-green-500">
-                        R$ {bonusCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        R$ {baseCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </p>
                 </div>
             </div>
@@ -82,7 +93,7 @@ const CommissionCard = ({
                         <span className="text-sm font-medium text-foreground">Próximo Bônus</span>
                     </div>
                     <span className="text-xs text-muted-foreground">
-                        {completedSystems} sistemas concluídos
+                        {completedSales} vendas fechadas
                     </span>
                 </div>
 
@@ -90,7 +101,7 @@ const CommissionCard = ({
 
                 <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">
-                        Faltam <span className="text-primary font-semibold">{systemsUntilNextBonus}</span> sistemas
+                        Faltam <span className="text-primary font-semibold">{salesUntilNextBonus}</span> vendas
                     </span>
                     <span className="text-green-500 font-medium">
                         +{bonusRate}% de bônus
@@ -111,7 +122,7 @@ const CommissionCard = ({
                                 ))}
                             </div>
                             <span className="text-xs text-green-500 font-medium">
-                                {bonusMultiplier} bônus conquistado{bonusMultiplier > 1 ? 's' : ''}!
+                                {bonusMultiplier} bônus conquistado{bonusMultiplier > 1 ? 's' : ''}! (+{bonusMultiplier * bonusRate}%)
                             </span>
                         </div>
                     </div>

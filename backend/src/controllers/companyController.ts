@@ -1,15 +1,12 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 import { searchPlaces, getPlaceDetails, getPlacePhotoUrl } from '../services/googleMapsService';
 import { AuthRequest } from '../middleware/auth';
 import { getUserPermissions } from '../middleware/authorization';
 
-const prisma = new PrismaClient();
-
 export const searchCompanies = async (req: AuthRequest, res: Response) => {
     try {
-        const { query, type, limit, minRating, maxRating, minReviews, openNow, radius, location } = req.query;
-        console.log(`🔎 SEARCH REQUEST: query="${query}", limit=${limit}, rating=${minRating}-${maxRating}`);
+        const { query, type, limit, minRating, maxRating, minReviews, openNow, radius, location, status } = req.query;
 
         if (!query) {
             return res.status(400).json({ error: 'Query parameter is required' });
@@ -116,7 +113,8 @@ export const importCompany = async (req: AuthRequest, res: Response) => {
                 successChance: customData?.successChance ? parseFloat(customData.successChance) : null,
                 tips: customData?.tips,
                 folderId: folderId || null,
-                photoUrl: photoUrl
+                photoUrl: photoUrl,
+                status: 'TRIAGE'
             }
         });
 
@@ -136,7 +134,14 @@ export const getCompanies = async (req: AuthRequest, res: Response) => {
         }
 
         const permissions = await getUserPermissions(userId);
+        const { status } = req.query;
         const where: any = {};
+
+
+
+        if (status) {
+            where.status = status;
+        }
 
         // Filter logic:
         // 1. Super Admin or Admin -> Sees all (usually, assuming Admin has canViewAllLeads true by default or bypass)
@@ -155,7 +160,17 @@ export const getCompanies = async (req: AuthRequest, res: Response) => {
 
         const companies = await prisma.company.findMany({
             where,
-            include: { folder: true },
+            include: {
+                folder: true,
+                responsible: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        avatar: true
+                    }
+                }
+            },
             orderBy: { createdAt: 'desc' }
         });
 

@@ -1,8 +1,6 @@
 import { Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 import { AuthRequest } from './auth';
-
-const prisma = new PrismaClient();
 
 // Permission type for type safety
 type PermissionKey =
@@ -11,13 +9,29 @@ type PermissionKey =
     | 'canViewOwnLeads'
     | 'canManageLeads'
     | 'canAssignLeads'
+    | 'canImportLeads'
+    | 'canExportLeads'
     | 'canViewCRM'
+    | 'canMoveCards'
+    | 'canManageStages'
     | 'canViewDashboard'
     | 'canViewCosts'
     | 'canViewChat'
+    | 'canSendMessage'
+    | 'canDeleteMessages'
+    | 'canViewAllChats'
+    | 'canManageConnections'
     | 'canManageUsers'
     | 'canManageGroups'
-    | 'canManageFolders';
+    | 'canManageFolders'
+    | 'canViewSystemLogs'
+    | 'canManageSettings'
+    | 'canManageIntegrations'
+    | 'canViewPersonal'
+    | 'canManageTasks'
+    | 'canManageGoals'
+    | 'canViewMonitoring'
+    | 'canUseOwnWhatsApp';
 
 // Extended auth request with permissions
 export interface AuthRequestWithPermissions extends AuthRequest {
@@ -177,13 +191,28 @@ export const getUserPermissions = async (userId: string) => {
             canViewOwnLeads: true,
             canManageLeads: true,
             canAssignLeads: true,
+            canImportLeads: true,
+            canExportLeads: true,
             canViewCRM: true,
+            canMoveCards: true,
+            canManageStages: true,
             canViewDashboard: true,
             canViewCosts: true,
             canViewChat: true,
+            canSendMessage: true,
+            canDeleteMessages: true,
+            canViewAllChats: true,
+            canManageConnections: true,
             canManageUsers: true,
             canManageGroups: true,
             canManageFolders: true,
+            canViewSystemLogs: true,
+            canManageSettings: true,
+            canManageIntegrations: true,
+            canViewPersonal: true,
+            canManageTasks: true,
+            canManageGoals: true,
+            canViewMonitoring: true,
             canUseOwnWhatsApp: true
         };
     }
@@ -192,18 +221,44 @@ export const getUserPermissions = async (userId: string) => {
     const perms = user.accessGroup?.permissions;
     return {
         role: user.role,
+        // Lead Permissions
         canSearchLeads: perms?.canSearchLeads ?? false,
         canViewAllLeads: perms?.canViewAllLeads ?? false,
         canViewOwnLeads: perms?.canViewOwnLeads ?? true,
         canManageLeads: perms?.canManageLeads ?? false,
         canAssignLeads: perms?.canAssignLeads ?? false,
+        canImportLeads: perms?.canImportLeads ?? false,
+        canExportLeads: perms?.canExportLeads ?? false,
+
+        // CRM Permissions
         canViewCRM: perms?.canViewCRM ?? true,
+        canMoveCards: perms?.canMoveCards ?? true,
+        canManageStages: perms?.canManageStages ?? false,
+
+        // Module Permissions
         canViewDashboard: perms?.canViewDashboard ?? true,
         canViewCosts: perms?.canViewCosts ?? false,
+
+        // Chat Permissions
         canViewChat: perms?.canViewChat ?? false,
+        canSendMessage: perms?.canSendMessage ?? false,
+        canDeleteMessages: perms?.canDeleteMessages ?? false,
+        canViewAllChats: perms?.canViewAllChats ?? false,
+        canManageConnections: perms?.canManageConnections ?? false,
+
+        // Admin Permissions
         canManageUsers: perms?.canManageUsers ?? false,
         canManageGroups: perms?.canManageGroups ?? false,
         canManageFolders: perms?.canManageFolders ?? false,
+        canViewSystemLogs: perms?.canViewSystemLogs ?? false,
+        canManageSettings: perms?.canManageSettings ?? false,
+        canManageIntegrations: perms?.canManageIntegrations ?? false,
+
+        // Personal & Monitoring
+        canViewPersonal: perms?.canViewPersonal ?? true,
+        canManageTasks: perms?.canManageTasks ?? true,
+        canManageGoals: perms?.canManageGoals ?? true,
+        canViewMonitoring: perms?.canViewMonitoring ?? false,
         canUseOwnWhatsApp: perms?.canUseOwnWhatsApp ?? false
     };
 };

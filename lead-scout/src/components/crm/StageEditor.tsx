@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Stage } from '@/types/lead';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,10 @@ const PRESET_COLORS = [
 
 const StageEditor = ({ open, onClose, stages, onSave }: StageEditorProps) => {
     const [localStages, setLocalStages] = useState<Stage[]>(stages);
+
+    useEffect(() => {
+        setLocalStages(stages);
+    }, [stages, open]);
 
     const handleDragEnd = (result: DropResult) => {
         if (!result.destination) return;
@@ -70,20 +74,20 @@ const StageEditor = ({ open, onClose, stages, onSave }: StageEditorProps) => {
     };
 
     return (
-        <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className="bg-card border-border/30 max-w-lg">
+        <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
+            <DialogContent className="bg-card border-border/30 max-w-2xl w-[90vw]">
                 <DialogHeader>
-                    <DialogTitle className="text-foreground">Personalizar Etapas do Funil</DialogTitle>
+                    <DialogTitle className="text-foreground text-xl">Personalizar Etapas do Funil</DialogTitle>
                 </DialogHeader>
 
-                <div className="py-4">
+                <div className="py-6">
                     <DragDropContext onDragEnd={handleDragEnd}>
-                        <Droppable droppableId="stages">
+                        <Droppable droppableId="stages" direction="horizontal">
                             {(provided) => (
                                 <div
                                     ref={provided.innerRef}
                                     {...provided.droppableProps}
-                                    className="space-y-2"
+                                    className="grid grid-cols-1 sm:grid-cols-2 gap-3"
                                 >
                                     {localStages.map((stage, index) => (
                                         <Draggable key={stage.id} draggableId={stage.id} index={index}>
@@ -91,58 +95,64 @@ const StageEditor = ({ open, onClose, stages, onSave }: StageEditorProps) => {
                                                 <div
                                                     ref={provided.innerRef}
                                                     {...provided.draggableProps}
-                                                    className="flex items-center gap-3 bg-secondary/50 rounded-lg p-3"
+                                                    className="bg-card border border-border/50 rounded-xl p-3 shadow-sm group hover:border-primary/30 transition-all"
                                                 >
-                                                    <div
-                                                        {...provided.dragHandleProps}
-                                                        className="text-muted-foreground hover:text-foreground cursor-grab"
-                                                    >
-                                                        <GripVertical className="w-4 h-4" />
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <div
+                                                            {...provided.dragHandleProps}
+                                                            className="text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing p-1 -ml-1 rounded hover:bg-secondary"
+                                                        >
+                                                            <GripVertical className="w-4 h-4" />
+                                                        </div>
+                                                        <button
+                                                            onClick={() => handleRemoveStage(stage.id)}
+                                                            disabled={localStages.length <= 1}
+                                                            className="text-muted-foreground hover:text-red-500 p-1 rounded hover:bg-red-500/10 transition-colors disabled:opacity-30"
+                                                            title="Remover etapa"
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                        </button>
                                                     </div>
 
-                                                    <div className="flex-1 flex items-center gap-3">
-                                                        <div className="relative">
+                                                    <div className="space-y-2">
+                                                        <div className="flex items-center gap-2">
                                                             <input
                                                                 type="color"
                                                                 value={stage.color}
                                                                 onChange={(e) => handleUpdateStage(stage.id, { color: e.target.value })}
-                                                                className="w-8 h-8 rounded cursor-pointer border-0 p-0"
+                                                                className="w-8 h-8 rounded-md cursor-pointer border border-border/50 p-0.5 bg-background flex-shrink-0"
+                                                            />
+                                                            <Input
+                                                                value={stage.name}
+                                                                onChange={(e) => handleUpdateStage(stage.id, { name: e.target.value })}
+                                                                className="flex-1 bg-background/50 border-border/30 focus:bg-background h-8 text-sm"
+                                                                placeholder="Nome da etapa"
                                                             />
                                                         </div>
-                                                        <Input
-                                                            value={stage.name}
-                                                            onChange={(e) => handleUpdateStage(stage.id, { name: e.target.value })}
-                                                            className="flex-1 bg-background/50 border-border/30"
-                                                        />
                                                     </div>
-
-                                                    <button
-                                                        onClick={() => handleRemoveStage(stage.id)}
-                                                        disabled={localStages.length <= 1}
-                                                        className="w-8 h-8 rounded flex items-center justify-center text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
                                                 </div>
                                             )}
                                         </Draggable>
                                     ))}
                                     {provided.placeholder}
+
+                                    {/* Add Button as a card at the end */}
+                                    <button
+                                        onClick={handleAddStage}
+                                        className="border-2 border-dashed border-border/50 rounded-xl p-3 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all min-h-[100px]"
+                                    >
+                                        <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center group-hover:bg-primary/20">
+                                            <Plus className="w-5 h-5" />
+                                        </div>
+                                        <span className="font-medium text-sm">Adicionar</span>
+                                    </button>
                                 </div>
                             )}
                         </Droppable>
                     </DragDropContext>
-
-                    <button
-                        onClick={handleAddStage}
-                        className="w-full mt-4 flex items-center justify-center gap-2 py-3 border-2 border-dashed border-border/50 rounded-lg text-muted-foreground hover:border-primary/50 hover:text-primary transition-all"
-                    >
-                        <Plus className="w-4 h-4" />
-                        Adicionar Etapa
-                    </button>
                 </div>
 
-                <DialogFooter>
+                <DialogFooter className="border-t border-border/30 pt-4">
                     <Button variant="outline" onClick={onClose}>
                         Cancelar
                     </Button>

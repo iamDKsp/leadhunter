@@ -25,6 +25,13 @@ export interface Lead {
   updatedAt: Date;
   comments: string;
   photoUrl?: string; // Google Places photo URL
+  status: 'TRIAGE' | 'ACTIVE' | 'ARCHIVED' | 'won' | 'lost' | 'meeting';
+  responsibleId?: string;
+  responsible?: {
+    id: string;
+    name: string;
+    email: string;
+  };
 }
 
 export interface Stage {

@@ -1,8 +1,6 @@
 import { Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 import { AuthRequest } from '../middleware/auth';
-
-const prisma = new PrismaClient();
 
 // Assign a lead to a user (seller)
 export const assignLead = async (req: AuthRequest, res: Response) => {
@@ -32,7 +30,10 @@ export const assignLead = async (req: AuthRequest, res: Response) => {
         // Update the lead with new responsible
         const lead = await prisma.company.update({
             where: { id },
-            data: { responsibleId: userId },
+            data: {
+                responsibleId: userId,
+                status: 'ACTIVE'
+            },
             include: {
                 responsible: { select: { id: true, name: true, email: true } },
                 folder: true
@@ -126,7 +127,10 @@ export const bulkAssignLeads = async (req: AuthRequest, res: Response) => {
         // Update all leads
         await prisma.company.updateMany({
             where: { id: { in: leadIds } },
-            data: { responsibleId: userId }
+            data: {
+                responsibleId: userId,
+                status: 'ACTIVE'
+            }
         });
 
         // Create assignment history records
@@ -289,6 +293,7 @@ export const getSellers = async (req: AuthRequest, res: Response) => {
                 id: true,
                 name: true,
                 email: true,
+                avatar: true,
                 role: true,
                 _count: {
                     select: { assignedLeads: true }

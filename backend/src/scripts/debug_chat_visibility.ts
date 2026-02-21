@@ -9,7 +9,7 @@ async function main() {
     // 1. Check for Duplicate Leads named "Pods"
     const leads = await prisma.company.findMany({
         where: { name: { contains: 'Pods' } },
-        include: { users: true }
+        include: { responsible: true }
     });
 
     console.log(`Found ${leads.length} leads matching 'Pods':`);
@@ -19,7 +19,7 @@ async function main() {
         console.log(`Lead ID: ${lead.id}`);
         console.log(`Name: ${lead.name}`);
         console.log(`Phone: ${lead.phone}`);
-        console.log(`Assigned Users: ${lead.users.map(u => u.name).join(', ')}`);
+        console.log(`Assigned User: ${lead.responsible?.name || 'None'}`);
 
         const cleanPhone = lead.phone?.replace(/\D/g, '');
         console.log(`Clean Phone: ${cleanPhone}`);

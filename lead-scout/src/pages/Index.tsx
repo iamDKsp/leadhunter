@@ -20,9 +20,11 @@ import LeadsCRM from './LeadsCRM';
 import Personal from './Personal';
 import Conversas from './Conversas';
 import Monitoring from './Monitoring';
+import LeadManagement from './LeadManagement';
 import { toast } from 'sonner';
 import { User } from '@/types/auth'; // Import User type
 import { canViewPage } from '@/utils/permissions'; // Import permission helper
+import { SettingsModal } from '@/components/SettingsModal';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -32,11 +34,35 @@ const Index = () => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
+
     if (!token) {
       navigate('/login');
-    } else if (userStr) {
+      return;
+    }
+
+    // Initial load from local storage if available
+    if (userStr) {
       setUser(JSON.parse(userStr));
     }
+
+    // Always fetch fresh user data including avatar
+    import('@/services/api').then(({ auth }) => {
+      auth.me()
+        .then(userData => {
+          setUser(userData);
+          localStorage.setItem('user', JSON.stringify(userData));
+        })
+        .catch(err => {
+          console.error('Error fetching user data:', err);
+          // If 401, redirect to login
+          if (err.response && err.response.status === 401) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            navigate('/login');
+          }
+        });
+    });
+
   }, [navigate]);
 
   const { leads, folders, addLead, updateLead, deleteLead, refresh } = useLeads();
@@ -46,9 +72,16 @@ const Index = () => {
     if (view) {
       setActiveView(view);
     } else {
-      setActiveView('dashboard');
+      // Default routing based on role
+      if (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') {
+        setActiveView('management');
+        navigate('/management', { replace: true });
+      } else {
+        setActiveView('leads');
+        navigate('/leads', { replace: true });
+      }
     }
-  }, [view]);
+  }, [view, user]);
 
   // Handle view change by navigating
   const handleViewChange = (newView: string) => {
@@ -71,6 +104,7 @@ const Index = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => window.innerWidth < 768);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [activeChat, setActiveChat] = useState<{ number: string, name: string } | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const filteredLeads = useMemo(() => {
     return leads.filter((lead) => {
@@ -145,12 +179,14 @@ const Index = () => {
 
   const getViewTitle = () => {
     switch (activeView) {
+      case 'management':
+        return { title: 'Gestão de Leads', subtitle: 'Triagem e distribuição de leads' };
       case 'dashboard':
-        return { title: 'Dashboard', subtitle: 'Visão geral dos seus leads' };
+        return { title: 'Visão Geral', subtitle: 'Visão geral dos seus leads' };
       case 'personal':
         return { title: 'Pessoal', subtitle: 'Seu desempenho e metas' };
       case 'leads':
-        return { title: 'Todos os Leads', subtitle: `${leads.length} empresas cadastradas` };
+        return { title: 'CRM', subtitle: `${leads.length} empresas cadastradas` };
       case 'monitoring':
         return { title: 'Monitoramento', subtitle: 'Acompanhamento da equipe em tempo real' };
       case 'search':
@@ -205,12 +241,16 @@ const Index = () => {
       return <AccessGroups />;
     }
 
+    if (activeView === 'management') {
+      return <LeadManagement />;
+    }
+
     if (activeView === 'conversas') {
       return <Conversas />;
     }
 
     if (activeView === 'leads') {
-      return <LeadsCRM />;
+      return <LeadsCRM user={user} />;
     }
 
 
@@ -268,7 +308,9 @@ const Index = () => {
         onAddFolder={handleAddFolder}
         isCollapsed={isSidebarCollapsed}
         toggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+
         user={user}
+        onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
       <main className={cn(
@@ -289,7 +331,11 @@ const Index = () => {
         )}>
           {activeView === 'search' ? (
             <GoogleMapsSearch onLeadAdded={(newLead) => {
-              toast.success("Lead salvo! Verifique na aba 'Todos os Leads'");
+              const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+              const message = isAdmin
+                ? "Lead enviado para triagem. Verifique na aba 'Gestão de Leads'."
+                : "Lead salvo com sucesso! Aguarde a aprovação.";
+              toast.success(message);
               refresh(); // Update the list immediately
             }} />
           ) : (
@@ -310,6 +356,13 @@ const Index = () => {
         onOpenChange={setIsChatOpen}
         targetNumber={activeChat?.number}
         targetName={activeChat?.name}
+      />
+
+
+      <SettingsModal
+        open={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        user={user}
       />
     </div>
   );

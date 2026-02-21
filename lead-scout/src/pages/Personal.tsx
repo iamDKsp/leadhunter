@@ -18,6 +18,9 @@ interface Metrics {
     averageScore: number;
     hotLeads: number;
     totalValue: number;
+    potentialValue: number;
+    confirmedValue: number;
+    completedSales: number;
     averageTicket: number;
 }
 
@@ -46,16 +49,17 @@ interface Goal {
     target: number;
     current: number;
     unit: string;
-    icon: "leads" | "calls" | "meetings" | "sales";
+    icon: "leads" | "calls" | "meetings" | "sales" | "contacts";
 }
 
 interface Activity {
     id: string;
-    type: "call" | "email" | "meeting" | "task" | "proposal";
+    type: "won" | "lost" | "meeting" | string;
     title: string;
     leadName: string;
+    value?: number;
     time: string;
-    status: "completed" | "scheduled" | "pending";
+    status: "completed" | "scheduled" | "pending" | string;
 }
 
 interface PerformanceData {
@@ -76,6 +80,9 @@ export function Personal({ userName = "Usuário" }: PersonalProps) {
         averageScore: 0,
         hotLeads: 0,
         totalValue: 0,
+        potentialValue: 0,
+        confirmedValue: 0,
+        completedSales: 0,
         averageTicket: 0,
     });
     const [hotLeads, setHotLeads] = useState<HotLead[]>([]);
@@ -152,9 +159,6 @@ export function Personal({ userName = "Usuário" }: PersonalProps) {
         ? Math.round((metrics.contacted / metrics.totalLeads) * 100)
         : 0;
 
-    // Count completed leads/systems for commission (using contacted as proxy)
-    const completedSystems = metrics.contacted;
-
     return (
         <div className="p-8 space-y-8">
             {/* Welcome Section */}
@@ -199,7 +203,8 @@ export function Personal({ userName = "Usuário" }: PersonalProps) {
                 <div className="space-y-6">
                     {/* Total Value Card */}
                     <TotalValueCard
-                        totalValue={metrics.totalValue}
+                        potentialValue={metrics.potentialValue}
+                        confirmedValue={metrics.confirmedValue}
                         leadsCount={metrics.totalLeads}
                         averageValue={metrics.averageTicket}
                         conversionRate={conversionRate}
@@ -214,8 +219,9 @@ export function Personal({ userName = "Usuário" }: PersonalProps) {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Commission Card */}
                 <CommissionCard
-                    totalValue={metrics.totalValue}
-                    completedSystems={completedSystems}
+                    potentialValue={metrics.potentialValue}
+                    confirmedValue={metrics.confirmedValue}
+                    completedSales={metrics.completedSales}
                 />
 
                 {/* Weekly Goals */}

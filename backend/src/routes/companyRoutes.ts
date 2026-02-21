@@ -16,7 +16,7 @@ const router = express.Router();
 router.use(authenticateToken); // Protect all company routes
 
 router.get('/search', checkPermission('canSearchLeads'), searchCompanies);
-router.post('/import', checkPermission('canManageLeads'), importCompany);
+router.post('/import', checkPermission('canImportLeads'), importCompany);
 router.get('/', getCompanies); // Controller handles filtering based on ViewAll vs ViewOwn
 router.post('/', checkPermission('canManageLeads'), createCompany);
 router.put('/:id', checkPermission('canManageLeads'), updateCompany);

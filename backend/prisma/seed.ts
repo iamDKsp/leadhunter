@@ -94,6 +94,24 @@ async function main() {
     console.log('  - Administradores: Acesso total');
     console.log('  - Supervisores: Ver todos leads, atribuir, gerenciar pastas');
     console.log('  - Vendedores: Ver apenas próprios leads');
+
+    // Create admin user
+    const adminPassword = await bcrypt.hash('123456', 10);
+    const adminUser = await prisma.user.upsert({
+        where: { email: 'tarcisio@teltech.com' },
+        update: {},
+        create: {
+            email: 'tarcisio@teltech.com',
+            name: 'Tarcisio',
+            passwordHash: adminPassword,
+            role: 'SUPER_ADMIN',
+            interfacePreference: 'BOTH',
+            accessGroup: {
+                connect: { name: 'Administradores' }
+            }
+        }
+    });
+    console.log('✅ Usuário Admin criado: tarcisio@teltech.com / 123456');
 }
 
 main()

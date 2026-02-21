@@ -1,4 +1,4 @@
-import { Target, Phone, Calendar, ShoppingCart } from "lucide-react";
+import { Target, Phone, Calendar, ShoppingCart, UserCheck } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 interface Goal {
@@ -7,7 +7,7 @@ interface Goal {
     target: number;
     current: number;
     unit: string;
-    icon: "leads" | "calls" | "meetings" | "sales";
+    icon: "leads" | "calls" | "meetings" | "sales" | "contacts";
 }
 
 interface WeeklyGoalsCardProps {
@@ -21,6 +21,8 @@ const WeeklyGoalsCard = ({ goals }: WeeklyGoalsCardProps) => {
                 return <Target className="w-4 h-4" />;
             case "calls":
                 return <Phone className="w-4 h-4" />;
+            case "contacts":
+                return <UserCheck className="w-4 h-4" />;
             case "meetings":
                 return <Calendar className="w-4 h-4" />;
             case "sales":

@@ -1,13 +1,14 @@
-import { Activity, Phone, Mail, Calendar, FileText, CheckSquare } from "lucide-react";
+import { Activity, ThumbsUp, ThumbsDown, CalendarCheck, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ActivityItem {
     id: string;
-    type: "call" | "email" | "meeting" | "task" | "proposal";
+    type: "won" | "lost" | "meeting" | string;
     title: string;
     leadName: string;
+    value?: number;
     time: string;
-    status: "completed" | "scheduled" | "pending";
+    status: "completed" | "scheduled" | "pending" | string;
 }
 
 interface RecentActivityCardProps {
@@ -17,44 +18,40 @@ interface RecentActivityCardProps {
 const RecentActivityCard = ({ activities }: RecentActivityCardProps) => {
     const getIcon = (type: string) => {
         switch (type) {
-            case "call":
-                return <Phone className="w-4 h-4" />;
-            case "email":
-                return <Mail className="w-4 h-4" />;
+            case "won":
+                return <Trophy className="w-4 h-4" />;
+            case "lost":
+                return <ThumbsDown className="w-4 h-4" />;
             case "meeting":
-                return <Calendar className="w-4 h-4" />;
-            case "task":
-                return <CheckSquare className="w-4 h-4" />;
-            case "proposal":
-                return <FileText className="w-4 h-4" />;
+                return <CalendarCheck className="w-4 h-4" />;
             default:
                 return <Activity className="w-4 h-4" />;
         }
     };
 
-    const getStatusStyle = (status: string) => {
-        switch (status) {
-            case "completed":
+    const getTypeStyle = (type: string) => {
+        switch (type) {
+            case "won":
                 return "bg-green-500/10 text-green-500";
-            case "scheduled":
-                return "bg-blue-500/10 text-blue-500";
-            case "pending":
-                return "bg-yellow-500/10 text-yellow-500";
+            case "lost":
+                return "bg-red-500/10 text-red-500";
+            case "meeting":
+                return "bg-purple-500/10 text-purple-500";
             default:
                 return "bg-muted text-muted-foreground";
         }
     };
 
-    const getStatusText = (status: string) => {
-        switch (status) {
-            case "completed":
-                return "Concluído";
-            case "scheduled":
-                return "Agendado";
-            case "pending":
-                return "Pendente";
+    const getTypeLabel = (type: string) => {
+        switch (type) {
+            case "won":
+                return "Ganho";
+            case "lost":
+                return "Perdido";
+            case "meeting":
+                return "Reunião";
             default:
-                return status;
+                return type;
         }
     };
 
@@ -74,33 +71,34 @@ const RecentActivityCard = ({ activities }: RecentActivityCardProps) => {
                 {activities.length === 0 ? (
                     <p className="text-muted-foreground text-center py-4">Nenhuma atividade recente</p>
                 ) : (
-                    activities.slice(0, 5).map((activity) => (
+                    activities.slice(0, 8).map((activity) => (
                         <div
                             key={activity.id}
                             className="flex items-center gap-3 p-3 rounded-lg bg-background/50 border border-border/30 hover:border-primary/30 transition-colors"
                         >
                             <div className={cn(
-                                "w-8 h-8 rounded-lg flex items-center justify-center",
-                                getStatusStyle(activity.status)
+                                "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
+                                getTypeStyle(activity.type)
                             )}>
                                 {getIcon(activity.type)}
                             </div>
 
                             <div className="flex-1 min-w-0">
                                 <p className="font-medium text-foreground text-sm truncate">
-                                    {activity.title}
+                                    {activity.leadName}
                                 </p>
                                 <p className="text-xs text-muted-foreground truncate">
-                                    {activity.leadName}
+                                    {activity.title}
+                                    {activity.value ? ` • R$ ${activity.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : ''}
                                 </p>
                             </div>
 
-                            <div className="text-right">
+                            <div className="text-right flex-shrink-0">
                                 <span className={cn(
                                     "text-xs font-medium px-2 py-1 rounded-full",
-                                    getStatusStyle(activity.status)
+                                    getTypeStyle(activity.type)
                                 )}>
-                                    {getStatusText(activity.status)}
+                                    {getTypeLabel(activity.type)}
                                 </span>
                                 <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
                             </div>

@@ -1,29 +1,53 @@
 
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../lib/prisma';
 
 export const getMessages = async (req: Request, res: Response) => {
     try {
+        const userId = (req as any).user.userId;
         const { chatId } = req.params;
-        const logMsg = `[API] Fetching messages for chatId: ${chatId}\n`;
-        console.log(logMsg);
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        require('fs').appendFileSync('debug.log', `[${new Date().toISOString()}] ${logMsg}`);
 
         if (!chatId) {
             return res.status(400).json({ error: 'Chat ID is required' });
         }
 
-        const messages = await prisma.message.findMany({
-            where: { chatId },
-            orderBy: { timestamp: 'asc' }
+        // Security check: verify the user has a UserChat entry for this chatId
+        const cleanId = chatId.replace('@s.whatsapp.net', '').replace('@c.us', '');
+
+        // Build all possible chatId variations for this phone number
+        const possibleChatIds = [
+            cleanId,
+            `${cleanId}@s.whatsapp.net`,
+            `${cleanId}@c.us`,
+        ];
+
+        if (cleanId.startsWith('55') && cleanId.length > 11) {
+            const noPrefix = cleanId.substring(2);
+            possibleChatIds.push(`${noPrefix}@s.whatsapp.net`);
+            possibleChatIds.push(`${noPrefix}@c.us`);
+        } else if (cleanId.length <= 11) {
+            const withPrefix = `55${cleanId}`;
+            possibleChatIds.push(`${withPrefix}@s.whatsapp.net`);
+            possibleChatIds.push(`${withPrefix}@c.us`);
+        }
+
+        // Check if user owns this chat
+        const hasAccess = await prisma.userChat.findFirst({
+            where: {
+                userId,
+                chatId: { in: possibleChatIds }
+            }
         });
 
-        const foundMsg = `[API] Found ${messages.length} messages for ${chatId}\n`;
-        console.log(foundMsg);
-        require('fs').appendFileSync('debug.log', `[${new Date().toISOString()}] ${foundMsg}`);
+        if (!hasAccess) {
+            return res.status(403).json({ error: 'You do not have access to this chat' });
+        }
+
+        // Fetch messages using all variations
+        const messages = await prisma.message.findMany({
+            where: { chatId: { in: possibleChatIds } },
+            orderBy: { timestamp: 'asc' }
+        });
 
         res.json(messages);
     } catch (error) {

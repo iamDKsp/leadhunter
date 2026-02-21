@@ -42,7 +42,7 @@ export const FollowUpList = ({ followUps, onComplete, onDelete }: FollowUpListPr
         return (
             <div className="text-center py-4 text-muted-foreground">
                 <Bell className="h-6 w-6 mx-auto mb-2 opacity-50" />
-                <p className="text-xs">Nenhum follow-up agendado</p>
+                <p className="text-xs">Nenhuma tarefa agendada</p>
             </div>
         );
     }

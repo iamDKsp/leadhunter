@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { toast } from 'sonner';
+import { playNotificationSound } from '@/hooks/useSounds';
+import { IncomingNotification } from '@/components/chat/IncomingMessageNotification';
 
 interface WhatsAppMessage {
     id: string;
@@ -11,6 +12,7 @@ interface WhatsAppMessage {
     timestamp: number;
     fromMe: boolean;
     type?: 'chat' | 'ptt' | 'image' | 'video';
+    chatId?: string;
     ack?: number;
 }
 
@@ -19,7 +21,10 @@ interface WhatsAppContextType {
     status: string;
     qrCode: string | null;
     isConnected: boolean;
-    messages: WhatsAppMessage[]; // Global message cache (optional, but good for optimizing)
+    messages: WhatsAppMessage[];
+    pendingNotifications: IncomingNotification[];
+    dismissNotification: (id: string) => void;
+    dismissAllNotifications: () => void;
 }
 
 const WhatsAppContext = createContext<WhatsAppContextType | undefined>(undefined);
@@ -39,6 +44,15 @@ export const WhatsAppProvider = ({ children }: { children: ReactNode }) => {
     const [status, setStatus] = useState<string>('DISCONNECTED');
     const [qrCode, setQrCode] = useState<string | null>(null);
     const [messages, setMessages] = useState<WhatsAppMessage[]>([]);
+    const [pendingNotifications, setPendingNotifications] = useState<IncomingNotification[]>([]);
+
+    const dismissNotification = useCallback((id: string) => {
+        setPendingNotifications(prev => prev.filter(n => n.id !== id));
+    }, []);
+
+    const dismissAllNotifications = useCallback(() => {
+        setPendingNotifications([]);
+    }, []);
 
     useEffect(() => {
         const newSocket = io(BACKEND_URL);
@@ -54,34 +68,33 @@ export const WhatsAppProvider = ({ children }: { children: ReactNode }) => {
         });
 
         newSocket.on('whatsapp_qr', (data) => {
-            setQrCode(data);
-            setStatus('QR_RECEIVED');
+            if (data && data.qr) {
+                setQrCode(data.qr);
+                setStatus('QR_RECEIVED');
+            }
         });
 
         newSocket.on('whatsapp_message', (msg: WhatsAppMessage) => {
-            // Update global messages list (though we might not want to store ALL messages here if it gets huge)
-            // For now, let's keep it simple or just use it for notifications.
-
-            // Notification logic:
-            // Only notify if it's NOT from me
+            // Only create notification if it's NOT from me
             if (!msg.fromMe) {
-                // If there's audio, say "Audio message", else show body
-                const content = msg.type === 'ptt' ? '🎤 Áudio recebido'
-                    : msg.type === 'image' ? '📷 Imagem recebida'
-                        : msg.body;
+                const notification: IncomingNotification = {
+                    id: msg.id || `notif-${Date.now()}`,
+                    senderName: msg.senderName || msg.from,
+                    body: msg.body || '',
+                    chatId: msg.chatId || msg.from,
+                    timestamp: msg.timestamp || Date.now() / 1000,
+                    type: msg.type,
+                };
 
-                toast(msg.senderName || msg.from, {
-                    description: content,
-                    action: {
-                        label: 'Ver',
-                        onClick: () => {
-                            // Logic to open drawer could be complex here without prop drilling layout state.
-                            // For now, simple notification.
-                            // Ideally, we'd trigger a global state to open the drawer.
-                        }
-                    },
-                    position: 'top-right'
+                setPendingNotifications(prev => {
+                    // Prevent duplicates
+                    if (prev.find(n => n.id === notification.id)) return prev;
+                    // Limit to 10 max to prevent memory issues
+                    const updated = [...prev, notification];
+                    return updated.slice(-10);
                 });
+
+                playNotificationSound();
             }
         });
 
@@ -93,7 +106,16 @@ export const WhatsAppProvider = ({ children }: { children: ReactNode }) => {
     const isConnected = status === 'CONNECTED' || status === 'AUTHENTICATED' || status === 'READY';
 
     return (
-        <WhatsAppContext.Provider value={{ socket, status, qrCode, isConnected, messages }}>
+        <WhatsAppContext.Provider value={{
+            socket,
+            status,
+            qrCode,
+            isConnected,
+            messages,
+            pendingNotifications,
+            dismissNotification,
+            dismissAllNotifications,
+        }}>
             {children}
         </WhatsAppContext.Provider>
     );

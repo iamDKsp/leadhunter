@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { Lead, Folder } from '@/types/lead';
 
-const API_URL = 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -37,11 +37,30 @@ export const auth = {
         const response = await api.post('/auth/register', { email, password, name });
         return response.data;
     },
+    updateProfile: async (data: any) => {
+        const response = await api.put('/auth/profile', data);
+        return response.data;
+    },
+    me: async () => {
+        const response = await api.get('/auth/me');
+        return response.data;
+    },
+    uploadAvatar: async (file: File) => {
+        const formData = new FormData();
+        formData.append('avatar', file);
+        const response = await api.post('/auth/upload-avatar', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+        return response.data;
+    }
 };
 
 export const companies = {
-    getAll: async () => {
-        const response = await api.get<Lead[]>('/companies');
+    getAll: async (options?: { status?: string }) => {
+        const params = options ? { status: options.status } : {};
+        const response = await api.get<Lead[]>('/companies', { params });
         return response.data;
     },
     create: async (data: Partial<Lead>) => {
@@ -80,6 +99,44 @@ export const folders = {
     },
     delete: async (id: string) => {
         await api.delete(`/folders/${id}`);
+    }
+};
+
+export const users = {
+    getAll: async () => {
+        const response = await api.get('/auth/users');
+        return response.data;
+    },
+    update: async (id: string, data: any) => {
+        const response = await api.put(`/auth/users/${id}`, data);
+        return response.data;
+    }
+};
+
+
+export const stages = {
+    getAll: async () => {
+        const response = await api.get<any[]>('/stages');
+        return response.data;
+    },
+    saveAll: async (stagesData: any[]) => {
+        const response = await api.post<any[]>('/stages', stagesData);
+        return response.data;
+    }
+};
+
+export const whatsapp = {
+    getStatus: async (type: 'global' | 'personal' = 'global') => {
+        const response = await api.get(`/whatsapp/status?type=${type}`);
+        return response.data;
+    },
+    connect: async (type: 'global' | 'personal' = 'global') => {
+        const response = await api.post(`/whatsapp/connect`, { type });
+        return response.data;
+    },
+    disconnect: async (type: 'global' | 'personal' = 'global') => {
+        const response = await api.post(`/whatsapp/disconnect`, { type });
+        return response.data;
     }
 };
 

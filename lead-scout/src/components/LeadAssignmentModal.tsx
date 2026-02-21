@@ -12,12 +12,16 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import api, { users } from '@/services/api';
 
 interface Seller {
     id: string;
     name: string | null;
     email: string;
+    avatar?: string;
     role: string;
+    customTag?: string | null;
+    customTagColor?: string | null;
     _count: {
         assignedLeads: number;
     };
@@ -29,7 +33,7 @@ interface LeadAssignmentModalProps {
     leadId?: string;
     leadIds?: string[];
     leadName?: string;
-    currentResponsibleId?: string | null;
+    currentResponsibleId?: string;
     onAssigned?: () => void;
 }
 
@@ -42,123 +46,112 @@ export function LeadAssignmentModal({
     currentResponsibleId,
     onAssigned
 }: LeadAssignmentModalProps) {
-    const [sellers, setSellers] = useState<Seller[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [assigning, setAssigning] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedSellerId, setSelectedSellerId] = useState<string | null>(null);
+    const [sellers, setSellers] = useState<Seller[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [assigning, setAssigning] = useState(false);
 
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    const ids = leadIds || (leadId ? [leadId] : []);
+    const isBulk = ids.length > 1;
 
-    const getAuthHeaders = () => ({
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-    });
+    useEffect(() => {
+        if (open) {
+            setSearchQuery('');
+            setSelectedSellerId(currentResponsibleId || null);
+            fetchSellers();
+        }
+    }, [open, currentResponsibleId]);
 
     const fetchSellers = async () => {
+        setLoading(true);
         try {
-            setLoading(true);
-            const response = await fetch(`${API_URL}/leads/sellers/list`, {
-                headers: getAuthHeaders()
-            });
-            if (!response.ok) throw new Error('Failed to fetch sellers');
-            const data = await response.json();
+            const data = await users.getAll();
+            // Filter only sellers/admins if needed, or show all users
+            // Assuming the API returns all users
             setSellers(data);
         } catch (error) {
-            console.error('Error fetching sellers:', error);
-            toast.error('Erro ao carregar vendedores');
+            console.error("Failed to fetch sellers", error);
+            toast.error("Erro ao carregar vendedores");
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => {
-        if (open) {
-            fetchSellers();
-            setSelectedSellerId(currentResponsibleId || null);
-            setSearchQuery('');
-        }
-    }, [open, currentResponsibleId]);
-
     const handleAssign = async () => {
-        if (!selectedSellerId) {
-            toast.error('Selecione um vendedor');
-            return;
-        }
+        if (!selectedSellerId || ids.length === 0) return;
 
         setAssigning(true);
         try {
-            let response;
+            // Update each lead with the new responsibleId
+            await Promise.all(ids.map(id =>
+                api.put(`/companies/${id}`, { responsibleId: selectedSellerId })
+            ));
 
-            if (leadIds && leadIds.length > 0) {
-                // Bulk assignment
-                response = await fetch(`${API_URL}/leads/bulk-assign`, {
-                    method: 'POST',
-                    headers: getAuthHeaders(),
-                    body: JSON.stringify({ leadIds, userId: selectedSellerId })
-                });
-            } else if (leadId) {
-                // Single assignment
-                response = await fetch(`${API_URL}/leads/${leadId}/assign`, {
-                    method: 'POST',
-                    headers: getAuthHeaders(),
-                    body: JSON.stringify({ userId: selectedSellerId })
-                });
-            } else {
-                throw new Error('No lead specified');
-            }
+            toast.success(isBulk
+                ? `${ids.length} leads atribuídos com sucesso!`
+                : 'Lead atribuído com sucesso!'
+            );
 
-            if (!response.ok) throw new Error('Failed to assign lead');
-
-            const count = leadIds?.length || 1;
-            toast.success(`${count} lead(s) atribuído(s) com sucesso!`);
             onOpenChange(false);
-            onAssigned?.();
+            if (onAssigned) onAssigned();
         } catch (error) {
-            console.error('Error assigning lead:', error);
-            toast.error('Erro ao atribuir lead');
+            console.error("Failed to assign lead", error);
+            toast.error("Erro ao atribuir lead");
         } finally {
             setAssigning(false);
         }
     };
 
     const handleUnassign = async () => {
-        if (!leadId) return;
+        if (ids.length === 0) return;
 
         setAssigning(true);
         try {
-            const response = await fetch(`${API_URL}/leads/${leadId}/assign`, {
-                method: 'DELETE',
-                headers: getAuthHeaders()
-            });
+            await Promise.all(ids.map(id =>
+                api.put(`/companies/${id}`, { responsibleId: null })
+            ));
 
-            if (!response.ok) throw new Error('Failed to unassign lead');
-
-            toast.success('Lead desatribuído com sucesso!');
+            toast.success('Atribuição removida com sucesso!');
             onOpenChange(false);
-            onAssigned?.();
+            if (onAssigned) onAssigned();
         } catch (error) {
-            console.error('Error unassigning lead:', error);
-            toast.error('Erro ao desatribuir lead');
+            console.error("Failed to unassign lead", error);
+            toast.error("Erro ao remover atribuição");
         } finally {
             setAssigning(false);
         }
     };
 
-    const filteredSellers = sellers.filter(seller =>
-    (seller.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        seller.email.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
 
     const getInitials = (name: string | null, email: string) => {
-        if (name) {
-            return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-        }
-        return email.slice(0, 2).toUpperCase();
+        const source = name || email;
+        return source
+            .split(' ')
+            .map((names) => names[0])
+            .join('')
+            .toUpperCase()
+            .substring(0, 2);
     };
 
-    const getRoleBadge = (role: string) => {
-        switch (role) {
+    const getRoleBadge = (seller: Seller) => {
+        if (seller.customTag) {
+            return (
+                <Badge
+                    variant="outline"
+                    className="text-xs"
+                    style={{
+                        backgroundColor: `${seller.customTagColor || '#000000'}20`,
+                        color: seller.customTagColor || '#000000',
+                        borderColor: `${seller.customTagColor || '#000000'}50`
+                    }}
+                >
+                    {seller.customTag}
+                </Badge>
+            );
+        }
+
+        switch (seller.role) {
             case 'SUPER_ADMIN':
                 return <Badge variant="default" className="bg-yellow-500/20 text-yellow-500 text-xs">Super Admin</Badge>;
             case 'ADMIN':
@@ -168,7 +161,13 @@ export function LeadAssignmentModal({
         }
     };
 
-    const isBulk = leadIds && leadIds.length > 1;
+    const filteredSellers = sellers.filter(seller => {
+        const searchLower = searchQuery.toLowerCase();
+        return (
+            (seller.name && seller.name.toLowerCase().includes(searchLower)) ||
+            (seller.email && seller.email.toLowerCase().includes(searchLower))
+        );
+    });
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -177,7 +176,7 @@ export function LeadAssignmentModal({
                     <DialogTitle className="flex items-center gap-2">
                         <UserPlus className="w-5 h-5" />
                         {isBulk
-                            ? `Atribuir ${leadIds.length} Leads`
+                            ? `Atribuir ${ids.length} Leads`
                             : `Atribuir Lead${leadName ? `: ${leadName}` : ''}`
                         }
                     </DialogTitle>
@@ -212,23 +211,33 @@ export function LeadAssignmentModal({
                                     key={seller.id}
                                     onClick={() => setSelectedSellerId(seller.id)}
                                     className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${selectedSellerId === seller.id
-                                            ? 'bg-primary/20 border border-primary'
-                                            : 'hover:bg-secondary border border-transparent'
+                                        ? 'bg-primary/20 border border-primary'
+                                        : 'hover:bg-secondary border border-transparent'
                                         }`}
                                 >
-                                    <Avatar className="w-10 h-10">
-                                        <AvatarFallback className="bg-primary/20 text-primary">
-                                            {getInitials(seller.name, seller.email)}
-                                        </AvatarFallback>
+                                    <Avatar className="w-10 h-10 border border-border/50">
+                                        {seller.avatar ? (
+                                            <img
+                                                src={seller.avatar.startsWith('http') || seller.avatar.startsWith('/')
+                                                    ? `${seller.avatar.startsWith('/') ? import.meta.env.VITE_API_URL || 'http://localhost:3000' : ''}${seller.avatar}`
+                                                    : `https://api.dicebear.com/7.x/avataaars/svg?seed=${seller.avatar}`}
+                                                alt={seller.name || "Avatar"}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <AvatarFallback className="bg-primary/20 text-primary">
+                                                {getInitials(seller.name, seller.email)}
+                                            </AvatarFallback>
+                                        )}
                                     </Avatar>
                                     <div className="flex-1 text-left">
-                                        <p className="font-medium">{seller.name || seller.email}</p>
+                                        <p className="font-medium capitalize">{seller.name || seller.email}</p>
                                         <p className="text-xs text-muted-foreground">{seller.email}</p>
                                     </div>
                                     <div className="flex flex-col items-end gap-1">
-                                        {getRoleBadge(seller.role)}
+                                        {getRoleBadge(seller)}
                                         <span className="text-xs text-muted-foreground">
-                                            {seller._count.assignedLeads} leads
+                                            {seller._count?.assignedLeads || 0} leads
                                         </span>
                                     </div>
                                     {selectedSellerId === seller.id && (

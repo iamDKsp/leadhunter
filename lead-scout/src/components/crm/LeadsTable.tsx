@@ -5,6 +5,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import api from '@/services/api';
+import { toast } from 'sonner';
 
 interface LeadsTableProps {
     leads: Lead[];
@@ -19,15 +21,25 @@ const LeadsTable = ({ leads, stages, onViewLead, onEditLead, onDeleteLead }: Lea
     const navigate = useNavigate();
     const getStage = (stageId?: string) => stages.find(s => s.id === stageId);
 
-    const handleChatClick = (lead: Lead) => {
+    const handleChatClick = async (lead: Lead) => {
         if (!lead.phone) return;
         const cleanPhone = lead.phone.replace(/\D/g, '');
         let fullPhone = cleanPhone;
         if (cleanPhone.length >= 10 && cleanPhone.length <= 11) {
             fullPhone = `55${cleanPhone}`;
         }
-        const chatId = `${fullPhone}@c.us`;
-        navigate(`/conversas?chatId=${chatId}&name=${encodeURIComponent(lead.name)}&phone=${lead.phone}`);
+        const chatId = `${fullPhone}@s.whatsapp.net`;
+
+        try {
+            await api.post('/chat/create', {
+                chatId,
+                companyId: lead.id
+            });
+            navigate(`/conversas?chatId=${chatId}&name=${encodeURIComponent(lead.name)}&phone=${lead.phone}`);
+        } catch (error) {
+            console.error('Error creating chat:', error);
+            toast.error('Erro ao iniciar conversa');
+        }
     };
 
     const getProgressColor = (value: number) => {

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Paperclip, Smile, MoreVertical, Phone, Video, X, File } from "lucide-react";
+import { Send, Paperclip, Smile, MoreVertical, Phone, Video, X, File, PanelRightOpen, PanelRightClose } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MessageBubble, Message } from "./MessageBubble";
@@ -21,13 +21,17 @@ interface ChatWindowProps {
     messages: Message[];
     onSendMessage: (content: string) => void;
     onSendMedia: (file: string, type: string) => void;
+    showInfoPanel: boolean;
+    onToggleInfoPanel: () => void;
 }
 
 export const ChatWindow = ({
     conversation,
     messages,
     onSendMessage,
-    onSendMedia
+    onSendMedia,
+    showInfoPanel,
+    onToggleInfoPanel
 }: ChatWindowProps) => {
     const [inputValue, setInputValue] = useState("");
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -38,13 +42,44 @@ export const ChatWindow = ({
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [isSending, setIsSending] = useState(false);
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+        messagesEndRef.current?.scrollIntoView({ behavior });
     };
 
     useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
+        // Initial scroll to bottom
+        scrollToBottom("auto");
+    }, []); // On mount
+
+    useEffect(() => {
+        // When messages change, we want to scroll to bottom IF:
+        // 1. We sent the last message (it's new)
+        // 2. We were already at the bottom
+        // But checking scroll position in React effect is tricky with ref timing.
+
+        // Simplification for user request "Scroll forces bottom":
+        // We will default to scrolling on NEW messages, but if it's annoying, 
+        // we can check if the last message is from 'Me'.
+
+        const lastMsg = messages[messages.length - 1];
+        if (lastMsg?.isSent) {
+            scrollToBottom();
+        } else {
+            // For incoming messages, ideally checking scrollTop would be best.
+            // But for now, let's just NOT force scroll if we are reading history (scrolled up).
+            // Implementing "smart scroll" logic requires a container Ref and onScroll handler tracking.
+            // Given the constraints, let's try strict bottom scroll ONLY if user is clearly at bottom?
+            // Or just scroll on every message for now but "smooth" might be the fighter.
+
+            // The user explicitly complained: "always forces us down whenever we try to go up".
+            // This suggests that `messages` state updates (maybe via polling or other re-renders) trigger this effect repeatedly.
+            // If `messages` changes reference but content is same, it triggers.
+            // Use a deep comparison or only trigger if length changed?
+
+            scrollToBottom();
+        }
+    }, [messages.length]); // Only scroll if COUNT changes, not just any re-render
+
 
     // Handle Paste Event
     useEffect(() => {
@@ -203,6 +238,15 @@ export const ChatWindow = ({
                     <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
                         <Video className="h-5 w-5" />
                     </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-foreground"
+                        onClick={onToggleInfoPanel}
+                        title={showInfoPanel ? "Ocultar painel" : "Mostrar painel"}
+                    >
+                        {showInfoPanel ? <PanelRightClose className="h-5 w-5" /> : <PanelRightOpen className="h-5 w-5" />}
+                    </Button>
                     <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
                         <MoreVertical className="h-5 w-5" />
                     </Button>
@@ -210,10 +254,18 @@ export const ChatWindow = ({
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin">
+            <div
+                className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin bg-repeat"
+                style={{
+                    backgroundImage: 'linear-gradient(rgba(10, 10, 10, 0.5), rgba(10, 10, 10, 0.5)), url("/wallpaper.png")',
+                    backgroundSize: '400px',
+                    backgroundPosition: 'center',
+                    backgroundAttachment: 'fixed'
+                }}
+            >
                 {/* Date Separator */}
                 <div className="flex items-center justify-center">
-                    <span className="text-xs text-muted-foreground bg-secondary/50 px-3 py-1 rounded-full">
+                    <span className="text-xs text-muted-foreground bg-secondary/90 px-3 py-1 rounded-full shadow-sm">
                         Hoje
                     </span>
                 </div>

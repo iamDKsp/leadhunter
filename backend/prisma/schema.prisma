@@ -21,6 +21,17 @@ model AccessGroup {
   @@map("access_groups")
 }
 
+model Stage {
+  id    String @id @default(uuid())
+  name  String
+  color String
+  order Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("stages")
+}
+
 model Permission {
   id            String      @id @default(uuid())
   accessGroupId String      @unique
@@ -32,20 +43,37 @@ model Permission {
   canViewOwnLeads     Boolean @default(true)   // Pode ver leads atribuídos a si
   canManageLeads      Boolean @default(false)  // Pode criar/editar/excluir leads
   canAssignLeads      Boolean @default(false)  // Pode atribuir leads a vendedores
+  canImportLeads      Boolean @default(false)  // Pode importar leads via CSV/Excel
+  canExportLeads      Boolean @default(false)  // Pode exportar leads
+  
+  // CRM Permissions
+  canViewCRM          Boolean @default(true)   // Acesso ao CRM
+  canMoveCards        Boolean @default(true)   // Pode mover cards entre colunas
+  canManageStages     Boolean @default(false)  // Pode gerenciar funis e etapas
   
   // Module Permissions
-  canViewCRM          Boolean @default(true)   // Acesso ao CRM
   canViewDashboard    Boolean @default(true)   // Acesso ao Dashboard
   canViewCosts        Boolean @default(false)  // Pode ver custos de API
+  
+  // Chat Permissions
   canViewChat         Boolean @default(false)  // Acesso ao chat WhatsApp
+  canSendMessage      Boolean @default(false)  // Pode enviar mensagens
+  canDeleteMessages   Boolean @default(false)  // Pode apagar mensagens
+  canViewAllChats     Boolean @default(false)  // Pode ver chats de outros usuários
+  canManageConnections Boolean @default(false) // Pode conectar/desconectar WhatsApp
   
   // Admin Permissions
   canManageUsers      Boolean @default(false)  // Pode gerenciar usuários
   canManageGroups     Boolean @default(false)  // Pode gerenciar grupos de acesso
   canManageFolders    Boolean @default(false)  // Pode gerenciar pastas
+  canViewSystemLogs   Boolean @default(false)  // Pode ver logs do sistema
+  canManageSettings   Boolean @default(false)  // Pode gerenciar configurações gerais
+  canManageIntegrations Boolean @default(false) // Pode gerenciar integrações
   
-  // Permissions
+  // Personal & Monitoring
   canViewPersonal     Boolean @default(true)
+  canManageTasks      Boolean @default(true)   // Pode criar/editar tarefas
+  canManageGoals      Boolean @default(true)   // Pode criar/editar metas
   canViewMonitoring   Boolean @default(false)
   canUseOwnWhatsApp   Boolean @default(false) // Permite conectar Whats proprio
 
@@ -76,11 +104,16 @@ model User {
   updatedAt    DateTime @updatedAt
   folders      Folder[]
   interfacePreference String @default("BOTH") // "PC", "MOBILE", "BOTH"
+  avatar        String? // URL or identifier for user avatar
   
   // Access Control
   role          String       @default("SELLER") // "SUPER_ADMIN", "ADMIN", "SELLER"
   accessGroupId String?
   accessGroup   AccessGroup? @relation(fields: [accessGroupId], references: [id])
+  
+  // Custom Tags
+  customTag      String?      // Custom badge text (e.g., "Master", "Sales Lead")
+  customTagColor String?      // Hex color or specific color name
   
   // WhatsApp Config
   useOwnWhatsApp Boolean @default(false) // Se true, tenta usar sessão do usuario. Se false, usa global.
@@ -88,6 +121,9 @@ model User {
   // Lead Assignment
   assignedLeads       Company[]               @relation("LeadResponsible")
   assignmentsMade     LeadAssignmentHistory[] @relation("AssignmentsMade")
+  
+  // Chat Ownership
+  userChats           UserChat[]
   
   // Personal & Monitoring Relations
   tasks               Task[]
@@ -132,6 +168,9 @@ model Company {
   responsible   User?   @relation("LeadResponsible", fields: [responsibleId], references: [id])
   assignmentHistory LeadAssignmentHistory[]
   
+  // Chat Ownership
+  userChats     UserChat[]
+  
   // Personal Module Relations
   tasks         Task[]
   activityLogs  ActivityLog[]
@@ -171,6 +210,21 @@ model Message {
 
   @@index([chatId])
   @@map("messages")
+}
+
+model UserChat {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatId    String   // WhatsApp JID (e.g., 5514999999999@s.whatsapp.net)
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, chatId])
+  @@index([userId])
+  @@index([chatId])
+  @@map("user_chats")
 }
 
 model CostLog {

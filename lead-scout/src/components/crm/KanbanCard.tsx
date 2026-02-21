@@ -3,6 +3,8 @@ import { Lead } from '@/types/lead';
 import { MapPin, Phone, Mail, Eye, UserPlus, User, Building2, X, MessageCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
+import api from '@/services/api';
+import { toast } from 'sonner';
 
 interface KanbanCardProps {
     lead: Lead;
@@ -13,25 +15,38 @@ interface KanbanCardProps {
 
 const KanbanCard = ({ lead, isDragging, onView, onAssign }: KanbanCardProps) => {
     const [isImageOpen, setIsImageOpen] = useState(false);
+    const [isChatLoading, setIsChatLoading] = useState(false);
     const navigate = useNavigate();
 
-    const handleChatClick = (e: React.MouseEvent) => {
+    const handleChatClick = async (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!lead.phone) return;
+        if (!lead.phone || isChatLoading) return;
 
-        // Clean phone and format chatId
-        const cleanPhone = lead.phone.replace(/\D/g, '');
-        // Assume 55 if not present and length suggests it (optional, but backend controller does similar)
-        // Let's stick to simple "if missing, add it" or Just use what we have if backend is robust.
-        // Controller looks for `chatId` using IN clause with variations.
-        // Safe bet: Default to 55 prefix if 10-11 digits.
-        let fullPhone = cleanPhone;
-        if (cleanPhone.length >= 10 && cleanPhone.length <= 11) {
-            fullPhone = `55${cleanPhone}`;
+        setIsChatLoading(true);
+
+        try {
+            // Clean phone and format chatId
+            const cleanPhone = lead.phone.replace(/\D/g, '');
+            let fullPhone = cleanPhone;
+            if (cleanPhone.length >= 10 && cleanPhone.length <= 11) {
+                fullPhone = `55${cleanPhone}`;
+            }
+
+            const chatId = `${fullPhone}@s.whatsapp.net`;
+
+            // Create UserChat ownership record BEFORE navigating
+            await api.post('/chat/create', {
+                chatId,
+                companyId: lead.id
+            });
+
+            navigate(`/conversas?chatId=${chatId}&name=${encodeURIComponent(lead.name)}&phone=${lead.phone}`);
+        } catch (error) {
+            console.error('Error creating chat:', error);
+            toast.error('Erro ao iniciar conversa');
+        } finally {
+            setIsChatLoading(false);
         }
-
-        const chatId = `${fullPhone}@c.us`;
-        navigate(`/conversas?chatId=${chatId}&name=${encodeURIComponent(lead.name)}&phone=${lead.phone}`);
     };
 
     const getProgressColor = (value: number) => {
@@ -47,8 +62,30 @@ const KanbanCard = ({ lead, isDragging, onView, onAssign }: KanbanCardProps) => 
     return (
         <>
             <div
-                className={`bg-card/80 backdrop-blur-sm border border-border/30 rounded-lg p-3 cursor-grab active:cursor-grabbing transition-all ${isDragging ? 'shadow-lg shadow-primary/20 border-primary/50 rotate-2' : 'hover:border-primary/30'
+                className={`bg-card/80 backdrop-blur-sm border rounded-lg p-3 cursor-grab active:cursor-grabbing transition-all ${isDragging ? 'shadow-lg shadow-primary/20 border-primary/50' : 'hover:border-primary/30'
+                    } ${lead.status === 'won'
+                        ? 'border-green-500/50'
+                        : lead.status === 'lost'
+                            ? 'border-red-500/50'
+                            : lead.status === 'meeting'
+                                ? 'border-purple-500/50'
+                                : 'border-border/30'
                     }`}
+                style={
+                    lead.status === 'won'
+                        ? {
+                            boxShadow: '0 0 15px rgba(34, 197, 94, 0.35), 0 0 40px rgba(34, 197, 94, 0.1), inset 0 0 20px rgba(34, 197, 94, 0.05)',
+                        }
+                        : lead.status === 'lost'
+                            ? {
+                                boxShadow: '0 0 15px rgba(239, 68, 68, 0.35), 0 0 40px rgba(239, 68, 68, 0.1), inset 0 0 20px rgba(239, 68, 68, 0.05)',
+                            }
+                            : lead.status === 'meeting'
+                                ? {
+                                    boxShadow: '0 0 15px rgba(139, 92, 246, 0.35), 0 0 40px rgba(139, 92, 246, 0.1), inset 0 0 20px rgba(139, 92, 246, 0.05)',
+                                }
+                                : undefined
+                }
             >
                 {/* Header with Photo */}
                 <div className="flex items-start justify-between mb-2 gap-2">
@@ -76,16 +113,27 @@ const KanbanCard = ({ lead, isDragging, onView, onAssign }: KanbanCardProps) => 
                             <Building2 className={`w-5 h-5 text-muted-foreground ${lead.photoUrl ? 'hidden' : ''}`} />
                         </div>
                         <div className="flex-1 min-w-0">
-                            <h4 className="font-medium text-foreground text-sm truncate pr-1">{lead.name}</h4>
+                            <h4 className="font-medium text-foreground text-sm truncate pr-1 capitalize">{lead.name}</h4>
                             <div className="flex flex-wrap gap-1">
-                                {Array.isArray((lead as any).tags) && (lead as any).tags.map((tag: string) => (
-                                    <span
-                                        key={tag}
-                                        className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase"
-                                    >
-                                        {tag}
-                                    </span>
-                                ))}
+                                {Array.isArray((lead as any).tags) && (lead as any).tags.map((tag: string, i: number) => {
+                                    // Support colored tags in "color::TEXT" format
+                                    if (tag.includes('::')) {
+                                        const [color, text] = tag.split('::', 2);
+                                        return (
+                                            <span key={i}
+                                                className="text-[10px] px-1.5 py-0.5 rounded text-white font-medium uppercase"
+                                                style={{ backgroundColor: color }}>
+                                                {text}
+                                            </span>
+                                        );
+                                    }
+                                    return (
+                                        <span key={i}
+                                            className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase">
+                                            {tag}
+                                        </span>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
@@ -131,9 +179,29 @@ const KanbanCard = ({ lead, isDragging, onView, onAssign }: KanbanCardProps) => 
 
                 {/* Responsible badge */}
                 {hasResponsible && (
-                    <div className="mb-2 flex items-center gap-1 text-xs text-primary bg-primary/10 px-2 py-1 rounded-full w-fit">
-                        <User className="w-3 h-3" />
-                        <span className="truncate max-w-[120px]">{responsible?.name || responsible?.email}</span>
+                    <div
+                        className="mb-2 flex items-center gap-1 text-xs px-2 py-1 rounded-full w-fit"
+                        style={{
+                            backgroundColor: responsible?.customTag ? `${responsible.customTagColor || '#000000'}20` : 'hsl(var(--primary) / 0.1)',
+                            color: responsible?.customTag ? (responsible.customTagColor || '#000000') : 'hsl(var(--primary))',
+                            border: responsible?.customTag ? `1px solid ${responsible.customTagColor || '#000000'}50` : 'none'
+                        }}
+                    >
+                        {responsible?.avatar ? (
+                            <img
+                                src={responsible.avatar.startsWith('http') || responsible.avatar.startsWith('/')
+                                    ? `${responsible.avatar.startsWith('/') ? import.meta.env.VITE_API_URL || 'http://localhost:3000' : ''}${responsible.avatar}`
+                                    : `https://api.dicebear.com/7.x/avataaars/svg?seed=${responsible.avatar}`}
+                                alt="Avatar"
+                                className="w-3 h-3 rounded-full object-cover"
+                            />
+                        ) : (
+                            <User className="w-3 h-3" />
+                        )}
+                        <span className="truncate max-w-[120px]">
+                            {responsible?.customTag ? `${responsible.customTag} • ` : ''}
+                            {responsible?.name || responsible?.email}
+                        </span>
                     </div>
                 )}
 
@@ -155,6 +223,13 @@ const KanbanCard = ({ lead, isDragging, onView, onAssign }: KanbanCardProps) => 
                         <div className="flex items-center gap-1.5">
                             <MapPin className="w-3 h-3 flex-shrink-0" />
                             <span className="truncate">{lead.address}</span>
+                        </div>
+                    )}
+                    {(lead.value !== undefined && lead.value > 0) && (
+                        <div className="flex items-center gap-1.5 text-primary/80 font-medium">
+                            <span className="text-[10px]">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(lead.value)}
+                            </span>
                         </div>
                     )}
                 </div>

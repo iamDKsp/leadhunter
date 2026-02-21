@@ -1,7 +1,5 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../lib/prisma';
 
 // GET /monitoring/stats - Team overview stats
 export const getStats = async (req: Request, res: Response) => {

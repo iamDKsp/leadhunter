@@ -6,7 +6,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
-import { WhatsAppProvider } from "./context/WhatsAppContext";
+import { WhatsAppProvider, useWhatsApp } from "./context/WhatsAppContext";
+import { IncomingMessageNotification } from "./components/chat/IncomingMessageNotification";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,19 @@ const TokenHandler = () => {
   return null;
 };
 
+// Global notification overlay — must be inside WhatsAppProvider + BrowserRouter
+const GlobalNotifications = () => {
+  const { pendingNotifications, dismissNotification, dismissAllNotifications } = useWhatsApp();
+
+  return (
+    <IncomingMessageNotification
+      notifications={pendingNotifications}
+      onDismiss={dismissNotification}
+      onDismissAll={dismissAllNotifications}
+    />
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TokenHandler />
@@ -42,6 +56,7 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <GlobalNotifications />
         </BrowserRouter>
       </WhatsAppProvider>
     </TooltipProvider>
@@ -49,3 +64,4 @@ const App = () => (
 );
 
 export default App;
+

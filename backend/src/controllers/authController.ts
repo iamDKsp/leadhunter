@@ -1,10 +1,8 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 import { hashPassword, comparePassword, generateToken } from '../utils/auth';
 import { getUserPermissions } from '../middleware/authorization';
 import { AuthRequest } from '../middleware/auth';
-
-const prisma = new PrismaClient();
 
 export const register = async (req: Request, res: Response) => {
     try {
@@ -41,6 +39,7 @@ export const register = async (req: Request, res: Response) => {
                 id: user.id,
                 email: user.email,
                 name: user.name,
+                avatar: user.avatar,
                 role: user.role,
                 permissions
             }
@@ -77,10 +76,13 @@ export const login = async (req: Request, res: Response) => {
                 id: user.id,
                 email: user.email,
                 name: user.name,
+                avatar: user.avatar,
                 interfacePreference: user.interfacePreference,
                 role: user.role,
                 accessGroupId: user.accessGroupId,
                 useOwnWhatsApp: user.useOwnWhatsApp,
+                customTag: user.customTag,
+                customTagColor: user.customTagColor,
                 permissions
             }
         });
@@ -92,7 +94,7 @@ export const login = async (req: Request, res: Response) => {
 
 export const createUser = async (req: Request, res: Response) => {
     try {
-        const { email, password, name, interfacePreference, role, accessGroupId, useOwnWhatsApp } = req.body;
+        const { email, password, name, avatar, interfacePreference, role, accessGroupId, useOwnWhatsApp, customTag, customTagColor } = req.body;
 
         if (!email || !password) {
             return res.status(400).json({ error: 'Email and password are required' });
@@ -109,10 +111,13 @@ export const createUser = async (req: Request, res: Response) => {
                 email,
                 passwordHash,
                 name,
+                avatar: avatar || null,
                 interfacePreference: interfacePreference || 'BOTH',
                 role: role || 'SELLER',
                 accessGroupId: accessGroupId || null,
                 useOwnWhatsApp: useOwnWhatsApp || false,
+                customTag: customTag || null,
+                customTagColor: customTagColor || null,
             },
         });
 
@@ -124,6 +129,8 @@ export const createUser = async (req: Request, res: Response) => {
             role: user.role,
             accessGroupId: user.accessGroupId,
             useOwnWhatsApp: user.useOwnWhatsApp,
+            customTag: user.customTag,
+            customTagColor: user.customTagColor,
         });
     } catch (error) {
         console.error('Create user error:', error);
@@ -138,11 +145,14 @@ export const getUsers = async (req: Request, res: Response) => {
                 id: true,
                 name: true,
                 email: true,
+                avatar: true,
                 createdAt: true,
                 interfacePreference: true,
                 role: true,
                 accessGroupId: true,
                 useOwnWhatsApp: true,
+                customTag: true,
+                customTagColor: true,
                 accessGroup: {
                     select: { id: true, name: true }
                 },
@@ -160,16 +170,19 @@ export const getUsers = async (req: Request, res: Response) => {
 export const updateUser = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { name, email, password, interfacePreference, role, accessGroupId, useOwnWhatsApp } = req.body;
+        const { name, avatar, email, password, interfacePreference, role, accessGroupId, useOwnWhatsApp, customTag, customTagColor } = req.body;
 
         const data: any = {};
         if (name) data.name = name;
+        if (avatar !== undefined) data.avatar = avatar;
         if (email) data.email = email;
         if (password) data.passwordHash = await hashPassword(password);
         if (interfacePreference) data.interfacePreference = interfacePreference;
         if (role) data.role = role;
         if (accessGroupId !== undefined) data.accessGroupId = accessGroupId;
         if (useOwnWhatsApp !== undefined) data.useOwnWhatsApp = useOwnWhatsApp;
+        if (customTag !== undefined) data.customTag = customTag;
+        if (customTagColor !== undefined) data.customTagColor = customTagColor;
 
         const user = await prisma.user.update({
             where: { id },
@@ -178,11 +191,14 @@ export const updateUser = async (req: Request, res: Response) => {
                 id: true,
                 name: true,
                 email: true,
+                avatar: true,
                 createdAt: true,
                 interfacePreference: true,
                 role: true,
                 accessGroupId: true,
-                useOwnWhatsApp: true
+                useOwnWhatsApp: true,
+                customTag: true,
+                customTagColor: true
             }
         });
 
@@ -200,6 +216,81 @@ export const deleteUser = async (req: Request, res: Response) => {
         res.json({ message: 'User deleted successfully' });
     } catch (error) {
         console.error('Delete user error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+export const updateProfile = async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            console.log('Update Profile: Unauthorized - No userId');
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        const { name, avatar, email, password, interfacePreference, useOwnWhatsApp } = req.body;
+
+        const data: any = {};
+        if (name) data.name = name;
+        if (avatar !== undefined) data.avatar = avatar;
+        if (email) data.email = email;
+        if (password) data.passwordHash = await hashPassword(password);
+        if (interfacePreference) data.interfacePreference = interfacePreference;
+        if (useOwnWhatsApp !== undefined) data.useOwnWhatsApp = useOwnWhatsApp;
+
+
+
+        const user = await prisma.user.update({
+            where: { id: userId },
+            data,
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                avatar: true,
+                createdAt: true,
+                interfacePreference: true,
+                role: true,
+                accessGroupId: true,
+                useOwnWhatsApp: true,
+                customTag: true,
+                customTagColor: true
+            }
+        });
+
+        res.json(user);
+    } catch (error) {
+        console.error('Update profile error:', error);
+        res.status(500).json({ error: 'Internal server error', details: String(error) });
+    }
+};
+
+export const uploadAvatar = async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        // Generate the full URL for the uploaded file
+        // Assuming the server is running on the same host, relative path should work for frontend if handled correctly,
+        // but storing the full path or a specific identifier is better.
+        // Here we store the relative path from the server root which the frontend can prepend the API URL to.
+        const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+
+        // Update user profile
+        await prisma.user.update({
+            where: { id: userId },
+            data: { avatar: avatarUrl }
+        });
+
+        res.json({ avatar: avatarUrl });
+    } catch (error) {
+        console.error('Upload avatar error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 };

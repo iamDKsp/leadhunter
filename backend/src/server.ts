@@ -5,18 +5,42 @@ import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import compression from 'compression';
-import { initWhatsApp, sendMessage, logoutWhatsApp } from './services/whatsappService';
-import fs from 'fs';
+import { initWhatsApp, sendMessage, sendMedia, logoutWhatsApp, restoreSessions } from './services/whatsappService';
+import { authenticateToken } from './middleware/auth';
+
+import authRoutes from './routes/authRoutes';
+import companyRoutes from './routes/companyRoutes';
+import folderRoutes from './routes/folderRoutes';
+import messageRoutes from './routes/messageRoutes';
+import costRoutes from './routes/costRoutes';
+import accessGroupRoutes from './routes/accessGroupRoutes';
+import leadAssignmentRoutes from './routes/leadAssignmentRoutes';
+import personalRoutes from './routes/personalRoutes';
+import monitoringRoutes from './routes/monitoringRoutes';
+import stageRoutes from './routes/stageRoutes';
+import chatRoutes from './routes/chatRoutes';
+import whatsappRoutes from './routes/whatsappRoutes';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(helmet());
-app.use(cors());
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',')
+    : ['http://localhost:5173', 'http://localhost:3000'];
+
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+app.use(cors({
+    origin: ALLOWED_ORIGINS,
+    credentials: true
+}));
 app.use(compression());
 app.use(express.json({ limit: '50mb' }));
+app.use('/media', express.static('public/media'));
+app.use('/uploads', express.static('public/uploads'));
 
 app.get('/', (req, res) => {
     console.log("Health check ping");
@@ -27,7 +51,8 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.post('/whatsapp/logout', async (req, res) => {
+// WhatsApp API Routes — protected by auth
+app.post('/whatsapp/logout', authenticateToken, async (req, res) => {
     try {
         await logoutWhatsApp();
         res.json({ success: true });
@@ -37,9 +62,7 @@ app.post('/whatsapp/logout', async (req, res) => {
     }
 });
 
-// WhatsApp API Routes (Simple impl for now)
-// WhatsApp API Routes (Simple impl for now)
-app.post('/whatsapp/send', async (req, res) => {
+app.post('/whatsapp/send', authenticateToken, async (req, res) => {
     try {
         const { to, message } = req.body;
         if (!to || !message) {
@@ -56,13 +79,9 @@ app.post('/whatsapp/send', async (req, res) => {
     }
 });
 
-app.post('/whatsapp/send-media', async (req, res) => {
+app.post('/whatsapp/send-media', authenticateToken, async (req, res) => {
     try {
-        const { sendMedia } = await import('./services/whatsappService');
         const { to, media, type } = req.body;
-
-        fs.appendFileSync('debug.log', `[${new Date().toISOString()}] Received send-media request for ${to}, type=${type}\n`);
-
         if (!to || !media) {
             return res.status(400).json({ error: 'Missing parameters' });
         }
@@ -70,26 +89,12 @@ app.post('/whatsapp/send-media', async (req, res) => {
         res.json({ success: true });
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        const errorStack = error instanceof Error ? error.stack : '';
-        const log = `[${new Date().toISOString()}] Error in /whatsapp/send-media: ${errorMessage}\nStack: ${errorStack}\n`;
-
-        console.error("Error sending media:", error);
-        fs.appendFileSync('debug.log', log);
-
+        console.error("Error sending media:", errorMessage);
         res.status(500).json({ error: 'Failed to send media', details: errorMessage });
     }
 });
 
-import authRoutes from './routes/authRoutes';
-import companyRoutes from './routes/companyRoutes';
-import folderRoutes from './routes/folderRoutes';
-import messageRoutes from './routes/messageRoutes';
-import costRoutes from './routes/costRoutes';
-import accessGroupRoutes from './routes/accessGroupRoutes';
-import leadAssignmentRoutes from './routes/leadAssignmentRoutes';
-import personalRoutes from './routes/personalRoutes';
-import monitoringRoutes from './routes/monitoringRoutes';
-import chatRoutes from './routes/chatRoutes';
+// Routes
 
 app.use('/auth', authRoutes);
 app.use('/companies', companyRoutes);
@@ -97,23 +102,24 @@ app.use('/folders', folderRoutes);
 app.use('/messages', messageRoutes);
 app.use('/costs', costRoutes);
 app.use('/access-groups', accessGroupRoutes);
+app.use('/whatsapp', whatsappRoutes);
 app.use('/leads', leadAssignmentRoutes);
 app.use('/personal', personalRoutes);
 app.use('/monitoring', monitoringRoutes);
+app.use('/stages', stageRoutes);
 app.use('/chat', chatRoutes);
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
     cors: {
-        origin: "*", // Find a better way to restrict this in production
-        methods: ["GET", "POST"]
+        origin: ALLOWED_ORIGINS,
+        methods: ["GET", "POST"],
+        credentials: true
     }
 });
 
 // Initialize WhatsApp Service
-// We delay it slightly or just run it. It runs async.
 initWhatsApp(io);
-import { restoreSessions } from './services/whatsappService';
 restoreSessions();
 
 httpServer.listen(PORT, () => {

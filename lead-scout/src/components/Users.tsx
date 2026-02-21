@@ -11,6 +11,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
+    DialogDescription,
 } from "@/components/ui/dialog";
 import {
     Select,
@@ -24,12 +25,11 @@ interface User {
     id: string;
     name: string;
     email: string;
-    id: string;
-    name: string;
-    email: string;
     createdAt: string;
     interfacePreference?: string;
     useOwnWhatsApp?: boolean;
+    customTag?: string | null;
+    customTagColor?: string | null;
 }
 
 export function Users() {
@@ -44,6 +44,8 @@ export function Users() {
     const [password, setPassword] = useState('');
     const [interfacePreference, setInterfacePreference] = useState('BOTH');
     const [useOwnWhatsApp, setUseOwnWhatsApp] = useState(false);
+    const [customTag, setCustomTag] = useState('');
+    const [customTagColor, setCustomTagColor] = useState('#000000');
 
     const fetchUsers = async () => {
         try {
@@ -67,6 +69,8 @@ export function Users() {
         setPassword('');
         setInterfacePreference('BOTH');
         setUseOwnWhatsApp(false);
+        setCustomTag('');
+        setCustomTagColor('#000000');
         setEditingUser(null);
     };
 
@@ -77,6 +81,8 @@ export function Users() {
             setEmail(user.email);
             setInterfacePreference(user.interfacePreference || 'BOTH');
             setUseOwnWhatsApp(user.useOwnWhatsApp || false);
+            setCustomTag(user.customTag || '');
+            setCustomTagColor(user.customTagColor || '#000000');
             setPassword(''); // Don't fill password on edit
         } else {
             resetForm();
@@ -97,6 +103,8 @@ export function Users() {
                     email,
                     interfacePreference,
                     useOwnWhatsApp,
+                    customTag,
+                    customTagColor,
                     ...(password && { password }) // Only send password if provided
                 }, {
                     headers: { Authorization: `Bearer ${token}` }
@@ -109,7 +117,9 @@ export function Users() {
                     password,
                     name,
                     interfacePreference,
-                    useOwnWhatsApp
+                    useOwnWhatsApp,
+                    customTag,
+                    customTagColor
                 }, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
@@ -193,6 +203,36 @@ export function Users() {
                                     className="bg-secondary/50 border-input"
                                 />
                             </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="customTag">Tag Personalizada</Label>
+                                    <Input
+                                        id="customTag"
+                                        value={customTag}
+                                        onChange={(e) => setCustomTag(e.target.value)}
+                                        placeholder="Ex: Gerente"
+                                        className="bg-secondary/50 border-input"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="customTagColor">Cor da Tag</Label>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            id="customTagColor"
+                                            type="color"
+                                            value={customTagColor}
+                                            onChange={(e) => setCustomTagColor(e.target.value)}
+                                            className="w-12 h-10 p-1 bg-secondary/50 border-input cursor-pointer"
+                                        />
+                                        <Input
+                                            value={customTagColor}
+                                            onChange={(e) => setCustomTagColor(e.target.value)}
+                                            placeholder="#000000"
+                                            className="flex-1 bg-secondary/50 border-input"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
                             <div className="space-y-2">
                                 <Label htmlFor="interface">Interface Preferida</Label>
                                 <Select value={interfacePreference} onValueChange={setInterfacePreference}>
@@ -259,6 +299,7 @@ export function Users() {
                             <tr className="border-b border-border/30">
                                 <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Nome</th>
                                 <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Email</th>
+                                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Tag</th>
                                 <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Interface</th>
                                 <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Criado em</th>
                                 <th className="text-right px-6 py-4 text-sm font-medium text-muted-foreground">Ações</th>
@@ -269,6 +310,22 @@ export function Users() {
                                 <tr key={user.id} className="hover:bg-secondary/30 transition-colors">
                                     <td className="px-6 py-4 font-medium text-foreground">{user.name}</td>
                                     <td className="px-6 py-4 text-primary">{user.email}</td>
+                                    <td className="px-6 py-4">
+                                        {user.customTag ? (
+                                            <span
+                                                className="px-2 py-1 rounded text-xs font-semibold"
+                                                style={{
+                                                    backgroundColor: `${user.customTagColor}20`,
+                                                    color: user.customTagColor || '#888888',
+                                                    border: `1px solid ${user.customTagColor}50`
+                                                }}
+                                            >
+                                                {user.customTag}
+                                            </span>
+                                        ) : (
+                                            <span className="text-muted-foreground text-xs">-</span>
+                                        )}
+                                    </td>
                                     <td className="px-6 py-4 text-muted-foreground">{user.interfacePreference || 'BOTH'}</td>
                                     <td className="px-6 py-4 text-muted-foreground">{new Date(user.createdAt).toLocaleDateString()}</td>
                                     <td className="px-6 py-4">

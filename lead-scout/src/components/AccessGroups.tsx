@@ -25,13 +25,28 @@ interface Permission {
     canViewOwnLeads: boolean;
     canManageLeads: boolean;
     canAssignLeads: boolean;
+    canImportLeads: boolean;
+    canExportLeads: boolean;
     canViewCRM: boolean;
+    canMoveCards: boolean;
+    canManageStages: boolean;
     canViewDashboard: boolean;
     canViewCosts: boolean;
     canViewChat: boolean;
+    canSendMessage: boolean;
+    canDeleteMessages: boolean;
+    canViewAllChats: boolean;
+    canManageConnections: boolean;
     canManageUsers: boolean;
     canManageGroups: boolean;
     canManageFolders: boolean;
+    canViewSystemLogs: boolean;
+    canManageSettings: boolean;
+    canManageIntegrations: boolean;
+    canViewPersonal: boolean;
+    canManageTasks: boolean;
+    canManageGoals: boolean;
+    canViewMonitoring: boolean;
     canUseOwnWhatsApp: boolean;
 }
 
@@ -58,30 +73,71 @@ const DEFAULT_PERMISSIONS: Omit<Permission, 'id'> = {
     canViewOwnLeads: true,
     canManageLeads: false,
     canAssignLeads: false,
+    canImportLeads: false,
+    canExportLeads: false,
     canViewCRM: true,
+    canMoveCards: true,
+    canManageStages: false,
     canViewDashboard: true,
     canViewCosts: false,
     canViewChat: false,
+    canSendMessage: false,
+    canDeleteMessages: false,
+    canViewAllChats: false,
+    canManageConnections: false,
     canManageUsers: false,
     canManageGroups: false,
     canManageFolders: false,
+    canViewSystemLogs: false,
+    canManageSettings: false,
+    canManageIntegrations: false,
+    canViewPersonal: true,
+    canManageTasks: true,
+    canManageGoals: true,
+    canViewMonitoring: false,
     canUseOwnWhatsApp: false,
 };
 
 const PERMISSION_LABELS: Record<string, { label: string; description: string; category: string }> = {
+    // Leads
     canSearchLeads: { label: 'Pesquisar Leads', description: 'Pode pesquisar novos leads na API do Google', category: 'leads' },
     canViewAllLeads: { label: 'Ver Todos Leads', description: 'Pode visualizar todos os leads do sistema', category: 'leads' },
     canViewOwnLeads: { label: 'Ver Próprios Leads', description: 'Pode ver apenas leads atribuídos a si', category: 'leads' },
     canManageLeads: { label: 'Gerenciar Leads', description: 'Pode criar, editar e excluir leads', category: 'leads' },
     canAssignLeads: { label: 'Atribuir Leads', description: 'Pode atribuir leads a vendedores', category: 'leads' },
-    canViewCRM: { label: 'Acessar CRM', description: 'Pode visualizar o módulo CRM', category: 'modules' },
-    canViewDashboard: { label: 'Acessar Dashboard', description: 'Pode visualizar o dashboard', category: 'modules' },
-    canViewCosts: { label: 'Ver Custos', description: 'Pode visualizar custos de API', category: 'modules' },
-    canViewChat: { label: 'Acessar Chat', description: 'Pode usar o chat WhatsApp', category: 'modules' },
+    canImportLeads: { label: 'Importar Leads', description: 'Pode importar leads via CSV/Excel', category: 'leads' },
+    canExportLeads: { label: 'Exportar Leads', description: 'Pode exportar leads para CSV/Excel', category: 'leads' },
+
+    // CRM
+    canViewCRM: { label: 'Acessar CRM', description: 'Pode visualizar o módulo CRM', category: 'crm' },
+    canMoveCards: { label: 'Mover Cards', description: 'Pode mover cards entre colunas', category: 'crm' },
+    canManageStages: { label: 'Gerenciar Etapas', description: 'Pode criar e editar funis e etapas', category: 'crm' },
+
+    // Chat
+    canViewChat: { label: 'Acessar Chat', description: 'Pode usar o chat WhatsApp', category: 'chat' },
+    canSendMessage: { label: 'Enviar Mensagens', description: 'Pode enviar mensagens pelo chat', category: 'chat' },
+    canDeleteMessages: { label: 'Apagar Mensagens', description: 'Pode apagar mensagens do histórico', category: 'chat' },
+    canViewAllChats: { label: 'Ver Todos Chats', description: 'Pode ver chats de outros usuários', category: 'chat' },
+    canManageConnections: { label: 'Gerenciar Conexões', description: 'Pode conectar/desconectar WhatsApp', category: 'chat' },
+    canUseOwnWhatsApp: { label: 'WhatsApp Próprio', description: 'Pode conectar sua própria conta do WhatsApp', category: 'chat' },
+
+    // Modules/System
+    canViewDashboard: { label: 'Acessar Dashboard', description: 'Pode visualizar o dashboard', category: 'system' },
+    canViewCosts: { label: 'Ver Custos', description: 'Pode visualizar custos de API', category: 'system' },
+    canViewSystemLogs: { label: 'Ver Logs', description: 'Pode visualizar logs do sistema', category: 'system' },
+    canManageSettings: { label: 'Configurações', description: 'Pode alterar configurações gerais', category: 'system' },
+    canManageIntegrations: { label: 'Integrações', description: 'Pode gerenciar integrações externas', category: 'system' },
+
+    // Admin
     canManageUsers: { label: 'Gerenciar Usuários', description: 'Pode criar e editar usuários', category: 'admin' },
     canManageGroups: { label: 'Gerenciar Grupos', description: 'Pode criar e editar grupos de acesso', category: 'admin' },
     canManageFolders: { label: 'Gerenciar Pastas', description: 'Pode criar e organizar pastas', category: 'admin' },
-    canUseOwnWhatsApp: { label: 'WhatsApp Próprio', description: 'Pode conectar sua própria conta do WhatsApp', category: 'modules' },
+
+    // Personal
+    canViewPersonal: { label: 'Módulo Pessoal', description: 'Acesso à área pessoal', category: 'personal' },
+    canManageTasks: { label: 'Gerenciar Tarefas', description: 'Pode criar e editar tarefas', category: 'personal' },
+    canManageGoals: { label: 'Gerenciar Metas', description: 'Pode criar e editar metas', category: 'personal' },
+    canViewMonitoring: { label: 'Monitoramento', description: 'Acesso ao monitoramento (Admin)', category: 'personal' },
 };
 
 export function AccessGroups() {
@@ -512,11 +568,17 @@ export function AccessGroups() {
                     </DialogHeader>
 
                     <div className="space-y-6 py-4">
-                        {renderPermissionSection('leads', '📊 Leads')}
+                        {renderPermissionSection('leads', '📊 Leads & Dados')}
                         <Separator />
-                        {renderPermissionSection('modules', '📱 Módulos')}
+                        {renderPermissionSection('crm', '🔄 CRM & Vendas')}
                         <Separator />
-                        {renderPermissionSection('admin', '⚙️ Administração')}
+                        {renderPermissionSection('chat', '💬 Chat & WhatsApp')}
+                        <Separator />
+                        {renderPermissionSection('personal', '👤 Pessoal & Monitoramento')}
+                        <Separator />
+                        {renderPermissionSection('system', '⚙️ Sistema & Módulos')}
+                        <Separator />
+                        {renderPermissionSection('admin', '🛡️ Administração')}
                     </div>
 
                     <div className="flex gap-2 justify-end pt-4 border-t">

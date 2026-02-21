@@ -1,7 +1,5 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../lib/prisma';
 
 // GET /personal/metrics - User's lead stats
 export const getMetrics = async (req: Request, res: Response) => {
@@ -16,6 +14,7 @@ export const getMetrics = async (req: Request, res: Response) => {
                 successChance: true,
                 contacted: true,
                 value: true,
+                status: true,
             },
         });
 
@@ -29,15 +28,28 @@ export const getMetrics = async (req: Request, res: Response) => {
                     totalLeads
                 )
                 : 0;
-        const totalValue = leads.reduce((acc, l) => acc + (l.value ?? 0), 0);
-        const averageTicket = totalLeads > 0 ? Math.round(totalValue / totalLeads) : 0;
+
+        // Potential value = all leads
+        const potentialValue = leads.reduce((acc, l) => acc + (l.value ?? 0), 0);
+
+        // Confirmed value = leads with status 'won' or 'meeting' (contract stage or beyond)
+        const confirmedLeads = leads.filter((l) => l.status === 'won' || l.status === 'meeting');
+        const confirmedValue = confirmedLeads.reduce((acc, l) => acc + (l.value ?? 0), 0);
+
+        // Completed sales = leads with status 'won'
+        const completedSales = leads.filter((l) => l.status === 'won').length;
+
+        const averageTicket = totalLeads > 0 ? Math.round(potentialValue / totalLeads) : 0;
 
         res.json({
             totalLeads,
             contacted,
             hotLeads,
             averageScore,
-            totalValue,
+            totalValue: potentialValue,
+            potentialValue,
+            confirmedValue,
+            completedSales,
             averageTicket,
         });
     } catch (error) {
@@ -91,8 +103,15 @@ export const getTasks = async (req: Request, res: Response) => {
     try {
         const userId = (req as any).user.userId;
 
+        const { companyId } = req.query;
+
+        const where: any = { userId };
+        if (companyId) {
+            where.companyId = companyId as string;
+        }
+
         const tasks = await prisma.task.findMany({
-            where: { userId },
+            where,
             orderBy: [{ completed: 'asc' }, { dueDate: 'asc' }],
             include: {
                 company: { select: { name: true } },
@@ -110,6 +129,8 @@ export const getTasks = async (req: Request, res: Response) => {
                 priority: task.priority,
                 type: task.type,
                 completed: task.completed,
+                companyId: task.companyId,
+                rawDueDate: task.dueDate // Return raw date for frontend parsing
             }))
         );
     } catch (error) {
@@ -232,8 +253,7 @@ export const getGoals = async (req: Request, res: Response) => {
         const now = new Date();
         const dayOfWeek = now.getDay();
         const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-        const weekStart = new Date(now.setDate(diff));
-        weekStart.setHours(0, 0, 0, 0);
+        const weekStart = new Date(now.getFullYear(), now.getMonth(), diff, 0, 0, 0, 0);
 
         let goals = await prisma.goal.findMany({
             where: { userId, weekStart },
@@ -242,10 +262,10 @@ export const getGoals = async (req: Request, res: Response) => {
         // If no goals for this week, create defaults
         if (goals.length === 0) {
             const defaultGoals = [
-                { title: 'Novos Leads', target: 15, unit: 'leads', icon: 'leads' },
-                { title: 'Ligações Realizadas', target: 30, unit: 'ligações', icon: 'calls' },
-                { title: 'Reuniões Agendadas', target: 5, unit: 'reuniões', icon: 'meetings' },
                 { title: 'Vendas Fechadas', target: 3, unit: 'vendas', icon: 'sales' },
+                { title: 'Novos Leads', target: 15, unit: 'leads', icon: 'leads' },
+                { title: 'Reuniões Agendadas', target: 5, unit: 'reuniões', icon: 'meetings' },
+                { title: 'Contatos Realizados', target: 30, unit: 'contatos', icon: 'contacts' },
             ];
 
             goals = await Promise.all(
@@ -257,12 +277,60 @@ export const getGoals = async (req: Request, res: Response) => {
             );
         }
 
+        // Compute real "current" values from Company data for this week
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 7);
+
+        // Count leads with status='won' updated this week (for this user)
+        const salesCount = await prisma.company.count({
+            where: {
+                responsibleId: userId,
+                status: 'won',
+                updatedAt: { gte: weekStart, lt: weekEnd },
+            },
+        });
+
+        // Count leads created this week (for this user)
+        const newLeadsCount = await prisma.company.count({
+            where: {
+                responsibleId: userId,
+                createdAt: { gte: weekStart, lt: weekEnd },
+            },
+        });
+
+        // Count leads with status='meeting' updated this week (for this user)
+        const meetingsCount = await prisma.company.count({
+            where: {
+                responsibleId: userId,
+                status: 'meeting',
+                updatedAt: { gte: weekStart, lt: weekEnd },
+            },
+        });
+
+        // Count leads marked as contacted updated this week (for this user)
+        const contactsCount = await prisma.company.count({
+            where: {
+                responsibleId: userId,
+                contacted: true,
+                updatedAt: { gte: weekStart, lt: weekEnd },
+            },
+        });
+
+        // Map icon/title to real computed value
+        const computedValues: Record<string, number> = {
+            sales: salesCount,
+            leads: newLeadsCount,
+            meetings: meetingsCount,
+            contacts: contactsCount,
+            calls: contactsCount, // legacy fallback for old "calls" icon
+        };
+
         res.json(
             goals.map((g) => ({
                 id: g.id,
                 title: g.title,
                 target: g.target,
-                current: g.current,
+                current: computedValues[g.icon] ?? g.current,
                 unit: g.unit,
                 icon: g.icon,
             }))
@@ -310,29 +378,47 @@ export const updateGoal = async (req: Request, res: Response) => {
     }
 };
 
-// GET /personal/activity - Recent activity log
+// GET /personal/activity - Recent lead status changes (won/lost/meeting)
 export const getActivity = async (req: Request, res: Response) => {
     try {
         const userId = (req as any).user.userId;
 
-        const activities = await prisma.activityLog.findMany({
-            where: { userId },
-            orderBy: { createdAt: 'desc' },
+        // Get leads where status is won, lost, or meeting – most recently updated
+        const leads = await prisma.company.findMany({
+            where: {
+                responsibleId: userId,
+                status: { in: ['won', 'lost', 'meeting'] },
+            },
+            orderBy: { updatedAt: 'desc' },
             take: 10,
-            include: {
-                company: { select: { name: true } },
+            select: {
+                id: true,
+                name: true,
+                status: true,
+                value: true,
+                updatedAt: true,
             },
         });
 
+        const statusMap: Record<string, { type: string; title: string; statusLabel: string }> = {
+            won: { type: 'won', title: 'Venda fechada', statusLabel: 'completed' },
+            lost: { type: 'lost', title: 'Lead perdido', statusLabel: 'pending' },
+            meeting: { type: 'meeting', title: 'Reunião agendada', statusLabel: 'scheduled' },
+        };
+
         res.json(
-            activities.map((a) => ({
-                id: a.id,
-                type: a.type,
-                title: a.title,
-                leadName: a.company?.name || '',
-                time: formatTimeAgo(a.createdAt),
-                status: a.status,
-            }))
+            leads.map((l) => {
+                const info = statusMap[l.status || ''] || { type: 'task', title: 'Atualizado', statusLabel: 'completed' };
+                return {
+                    id: l.id,
+                    type: info.type,
+                    title: info.title,
+                    leadName: l.name,
+                    value: l.value ?? 0,
+                    time: formatTimeAgo(l.updatedAt),
+                    status: info.statusLabel,
+                };
+            })
         );
     } catch (error) {
         console.error('Error getting activity:', error);

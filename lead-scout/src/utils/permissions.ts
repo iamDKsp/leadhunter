@@ -23,12 +23,14 @@ export const canViewPage = (user: User | undefined | null, viewId: string): bool
 
     // Mapping view IDs to permissions
     switch (viewId) {
+        case 'management':
+            return hasPermission(user, 'canManageLeads');
         case 'dashboard':
             return hasPermission(user, 'canViewDashboard');
         case 'personal':
             return hasPermission(user, 'canViewPersonal');
         case 'leads':
-            return hasPermission(user, 'canViewAllLeads') || hasPermission(user, 'canViewOwnLeads');
+            return hasPermission(user, 'canViewCRM') || hasPermission(user, 'canViewAllLeads') || hasPermission(user, 'canViewOwnLeads');
         case 'users':
             return hasPermission(user, 'canManageUsers');
         case 'monitoring':
@@ -40,11 +42,11 @@ export const canViewPage = (user: User | undefined | null, viewId: string): bool
         case 'search':
             return hasPermission(user, 'canSearchLeads');
         case 'analytics':
-            return true; // Everyone can view analytics? Or should be restricted?
+            return true; // Everyone can view analytics
         case 'settings':
-            return true; // Profile settings usually open to all
+            return hasPermission(user, 'canManageSettings');
         case 'conversas':
-            return true;
+            return hasPermission(user, 'canViewChat');
         default:
             // Files/folders usually unrestricted or have their own logic
             if (viewId.startsWith('folder-')) return true;

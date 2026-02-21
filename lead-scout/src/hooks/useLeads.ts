@@ -3,7 +3,7 @@ import { Lead, Folder } from '@/types/lead';
 import { companies, folders as foldersApi } from '@/services/api';
 import { toast } from 'sonner';
 
-export function useLeads() {
+export function useLeads(status?: string) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -12,7 +12,7 @@ export function useLeads() {
     try {
       setIsLoading(true);
       const [leadsResult, foldersResult] = await Promise.allSettled([
-        companies.getAll(),
+        companies.getAll({ status }),
         foldersApi.getAll()
       ]);
 

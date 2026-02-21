@@ -9,9 +9,10 @@ interface KanbanBoardProps {
     onEditStage: (stage: Stage) => void;
     onViewLead: (lead: Lead) => void;
     onAssignLead?: (lead: Lead) => void;
+    onAddStage: (stageId: string) => void;
 }
 
-const KanbanBoard = ({ leads, stages, onLeadMove, onEditStage, onViewLead, onAssignLead }: KanbanBoardProps) => {
+const KanbanBoard = ({ leads, stages, onLeadMove, onEditStage, onViewLead, onAssignLead, onAddStage }: KanbanBoardProps) => {
     const handleDragEnd = (result: DropResult) => {
         const { destination, source, draggableId } = result;
 
@@ -40,6 +41,7 @@ const KanbanBoard = ({ leads, stages, onLeadMove, onEditStage, onViewLead, onAss
                         onEditStage={onEditStage}
                         onViewLead={onViewLead}
                         onAssignLead={onAssignLead}
+                        onAddStage={onAddStage}
                     />
                 ))}
             </div>
