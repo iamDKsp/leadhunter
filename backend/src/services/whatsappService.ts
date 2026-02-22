@@ -70,6 +70,32 @@ const updateCompanyStatus = async (phone: string, status: string, contacted: boo
     }
 };
 
+// --- HELPER: Resolve @lid to real phone number ---
+const resolveLidToPhone = (lid: string, sessionId: string): string | null => {
+    try {
+        const cleanLid = lid.replace('@lid', '');
+        const authFolder = path.resolve(__dirname, `../../baileys_auth_info/${sessionId}`);
+        if (!fs.existsSync(authFolder)) return null;
+
+        const files = fs.readdirSync(authFolder);
+        for (const file of files) {
+            if (file.startsWith('lid-mapping-') && file.endsWith('.json')) {
+                const filePath = path.join(authFolder, file);
+                const content = fs.readFileSync(filePath, 'utf-8');
+                // The file contains exactly the @lid number as a string, e.g. "33530943901795"
+                if (content.includes(cleanLid)) {
+                    // Extract phone number from filename: lid-mapping-{phone}.json
+                    const phone = file.replace('lid-mapping-', '').replace('.json', '');
+                    return `${phone}@s.whatsapp.net`;
+                }
+            }
+        }
+    } catch (error) {
+        console.error(`Failed to resolve lid ${lid} to phone in session ${sessionId}:`, error);
+    }
+    return null; // Could not resolve
+};
+
 // Initialize a specific session
 const createSession = async (sessionId: string) => {
     console.log(`Initializing WhatsApp Session: ${sessionId}`);
@@ -168,9 +194,27 @@ const createSession = async (sessionId: string) => {
 const handleIncomingMessage = async (msg: WAMessage, sessionId: string) => {
     try {
         const id = msg.key.id;
-        const from = msg.key.remoteJid!;
+
+        // --- FIX @LID FORMAT ---
+        // sometimes modern WA Web linked devices send messages with @lid
+        let from = msg.key.remoteJid!;
+
+        if (from.includes('@lid')) {
+            // Priority 1: Check if Baileys auth state has a mapping file for this @lid
+            const resolvedJid = resolveLidToPhone(from, sessionId);
+            if (resolvedJid) {
+                console.log(`Resolved opaque @lid ${from} -> ${resolvedJid}`);
+                from = resolvedJid;
+            }
+            // Priority 2: In groups, participant is the sender. For linked devices sometimes participant is the real JID
+            else if (msg.key.participant && msg.key.participant.includes('@s.whatsapp.net')) {
+                from = msg.key.participant;
+            }
+        } else if (from.includes('@g.us') && msg.key.participant) {
+            from = msg.key.participant;
+        }
+
         const fromMe = msg.key.fromMe || false;
-        // const sender =  msg.key.participant || msg.key.remoteJid;
         const pushName = msg.pushName || 'Unknown';
 
         // Extract body
@@ -297,6 +341,23 @@ const handleIncomingMessage = async (msg: WAMessage, sessionId: string) => {
             chatId: from // important for frontend matching
         });
 
+        // Track ownership if not GLOBAL
+        if (sessionId !== 'GLOBAL') {
+            await prisma.userChat.upsert({
+                where: {
+                    userId_chatId: {
+                        userId: sessionId,
+                        chatId: from
+                    }
+                },
+                update: {},
+                create: {
+                    userId: sessionId,
+                    chatId: from
+                }
+            });
+        }
+
     } catch (e) {
         console.error(`Error handling message for ${sessionId}`, e);
     }
@@ -416,6 +477,22 @@ export const sendMessage = async (to: string, message: string, userId: string = 
             chatId: jid
         });
 
+        if (targetSessionId !== 'GLOBAL') {
+            await prisma.userChat.upsert({
+                where: {
+                    userId_chatId: {
+                        userId: targetSessionId,
+                        chatId: jid
+                    }
+                },
+                update: {},
+                create: {
+                    userId: targetSessionId,
+                    chatId: jid
+                }
+            });
+        }
+
     } catch (error) {
         console.error("Error in sendMessage service:", error);
         throw error;
@@ -501,6 +578,22 @@ export const sendMedia = async (to: string, base64: string, type: 'ptt' | 'image
             sessionId: targetSessionId,
             chatId: jid
         });
+
+        if (targetSessionId !== 'GLOBAL') {
+            await prisma.userChat.upsert({
+                where: {
+                    userId_chatId: {
+                        userId: targetSessionId,
+                        chatId: jid
+                    }
+                },
+                update: {},
+                create: {
+                    userId: targetSessionId,
+                    chatId: jid
+                }
+            });
+        }
 
     } catch (error) {
         console.error("Error sending media:", error);

@@ -174,7 +174,7 @@ export const getUserChats = async (req: Request, res: Response) => {
     try {
         const { userId } = req.params;
 
-        // Get leads assigned to this user
+        // 1. Get leads assigned to this user
         const leads = await prisma.company.findMany({
             where: { responsibleId: userId },
             select: {
@@ -184,48 +184,116 @@ export const getUserChats = async (req: Request, res: Response) => {
             },
         });
 
-        // For each lead with a phone, get their chat messages
-        const chatHistory = await Promise.all(
-            leads
-                .filter((lead) => lead.phone)
-                .map(async (lead) => {
-                    // Clean phone to match chatId format
-                    const cleanPhone = lead.phone!.replace(/\D/g, '');
-                    const possibleChatIds = [
-                        `${cleanPhone}@c.us`,
-                        `55${cleanPhone}@c.us`,
-                    ];
+        // 2. Get UserChats for this user (connected WhatsApp arbitrary chats)
+        const userChats = await prisma.userChat.findMany({
+            where: { userId },
+            select: { chatId: true }
+        });
 
-                    const messages = await prisma.message.findMany({
-                        where: {
-                            chatId: { in: possibleChatIds },
-                        },
-                        orderBy: { timestamp: 'asc' },
-                        take: 50, // Limit to last 50 messages
-                    });
+        // Map to quickly find lead name by phone
+        const leadByPhone = new Map<string, string>();
+        leads.forEach(lead => {
+            if (lead.phone) {
+                const cleanPhone = lead.phone.replace(/\D/g, '');
+                // Map common Brazilian variations
+                leadByPhone.set(`${cleanPhone}@c.us`, lead.name);
+                if (cleanPhone.length <= 11 && !cleanPhone.startsWith('55')) {
+                    leadByPhone.set(`55${cleanPhone}@c.us`, lead.name);
+                }
+                // Try s.whatsapp.net as well
+                leadByPhone.set(`${cleanPhone}@s.whatsapp.net`, lead.name);
+                if (cleanPhone.length <= 11 && !cleanPhone.startsWith('55')) {
+                    leadByPhone.set(`55${cleanPhone}@s.whatsapp.net`, lead.name);
+                }
+            }
+        });
 
-                    if (messages.length === 0) return null;
+        // Consolidate all target chat IDs
+        const targetChatIds = new Set<string>();
 
-                    return {
-                        leadName: lead.name,
-                        leadPhone: lead.phone,
-                        messages: messages.map((msg) => ({
-                            id: msg.id,
-                            sender: msg.fromMe ? 'user' : 'lead',
-                            content: msg.body,
-                            timestamp: formatMessageTime(msg.timestamp),
-                            read: msg.ack >= 3,
-                        })),
-                    };
-                })
-        );
+        leads.forEach(lead => {
+            if (lead.phone) {
+                const cleanPhone = lead.phone.replace(/\D/g, '');
+                targetChatIds.add(`${cleanPhone}@c.us`);
+                if (cleanPhone.length <= 11 && !cleanPhone.startsWith('55')) {
+                    targetChatIds.add(`55${cleanPhone}@c.us`);
+                }
+            }
+        });
 
-        // Filter out null entries and count active chats
-        const validChats = chatHistory.filter((c) => c !== null);
+        userChats.forEach(uc => {
+            targetChatIds.add(uc.chatId);
+            // Also add .us to .net or vice versa just in case
+            if (uc.chatId.endsWith('@c.us')) targetChatIds.add(uc.chatId.replace('@c.us', '@s.whatsapp.net'));
+            if (uc.chatId.endsWith('@s.whatsapp.net')) targetChatIds.add(uc.chatId.replace('@s.whatsapp.net', '@c.us'));
+        });
+
+        if (targetChatIds.size === 0) {
+            return res.json({ activeChats: 0, chatHistory: [] });
+        }
+
+        // 3. Single optimized query: Get messages for all target chat IDs
+        const allMessages = await prisma.message.findMany({
+            where: {
+                chatId: { in: Array.from(targetChatIds) }
+            },
+            orderBy: { timestamp: 'asc' },
+            // We cannot limit easily per chat in a single findMany without window functions in SQL,
+            // but for monitoring we usually don't have millions of recent messages anyway.
+            // If the DB is huge, we might need a raw query with row_number(). For now, get last week or reasonable chunks.
+            // Let's get messages from the last 7 days to restrict size.
+            // where: { timestamp: { gte: Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60 } } 
+        });
+
+        // Group messages by chatId
+        const messagesByChat = new Map<string, any[]>();
+
+        allMessages.forEach(msg => {
+            // Check both variations
+            let canonicalChatId = msg.chatId;
+            if (canonicalChatId.endsWith('@s.whatsapp.net')) {
+                canonicalChatId = canonicalChatId.replace('@s.whatsapp.net', '@c.us');
+            }
+
+            if (!messagesByChat.has(canonicalChatId)) {
+                messagesByChat.set(canonicalChatId, []);
+            }
+            messagesByChat.get(canonicalChatId)!.push(msg);
+        });
+
+        const chatHistory = [];
+        let activeChatsCount = 0;
+
+        for (const [chatId, msgs] of messagesByChat.entries()) {
+            if (msgs.length === 0) continue;
+
+            // Keep only latest 50 messages to not overload frontend
+            const recentMsgs = msgs.slice(-50);
+            activeChatsCount++;
+
+            // Extract contact name & phone
+            const leadName = leadByPhone.get(chatId) || leadByPhone.get(chatId.replace('@c.us', '@s.whatsapp.net'));
+
+            // Fallback for non-lead
+            let displayPhone = chatId.replace('@c.us', '').replace('@s.whatsapp.net', '');
+            let displayName = leadName || recentMsgs.find(m => m.senderName && m.senderName !== 'Me')?.senderName || displayPhone;
+
+            chatHistory.push({
+                leadName: displayName,
+                leadPhone: displayPhone,
+                messages: recentMsgs.map((msg: any) => ({
+                    id: msg.id,
+                    sender: msg.fromMe ? 'user' : 'lead',
+                    content: msg.body,
+                    timestamp: formatMessageTime(msg.timestamp),
+                    read: msg.ack >= 3,
+                })),
+            });
+        }
 
         res.json({
-            activeChats: validChats.length,
-            chatHistory: validChats,
+            activeChats: chatHistory.length, // use length of generated history
+            chatHistory: chatHistory,
         });
     } catch (error) {
         console.error('Error getting user chats:', error);
