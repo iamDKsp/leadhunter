@@ -4,7 +4,7 @@
     "description": "Backend for Lead Hunter application",
     "main": "dist/server.js",
     "scripts": {
-        "start": "node dist/server.js",
+        "start": "npx prisma db push --accept-data-loss && npm run seed && node dist/server.js",
         "dev": "tsx watch src/server.ts",
         "build": "tsc",
         "test": "vitest",
