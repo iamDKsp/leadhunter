@@ -20,21 +20,26 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ open, onClose, user }: SettingsModalProps) {
-    const { status: globalStatus, qrCode: globalQr, isConnected: globalConnected } = useWhatsApp();
+    const { status: contextStatus, qrCode: contextQr, isConnected: contextConnected } = useWhatsApp();
 
-    // Local state for personal WhatsApp (mocked for now or waiting for backend implementation)
-    const [personalStatus, setPersonalStatus] = useState('DISCONNECTED');
-    const [personalQr, setPersonalQr] = useState<string | null>(null);
+    const canUseOwnWhatsApp = user?.permissions?.canUseOwnWhatsApp || user?.role === 'SUPER_ADMIN';
+    const isUsingOwnWhatsApp = user?.useOwnWhatsApp || false;
+
+    const globalStatus = isUsingOwnWhatsApp ? 'DISCONNECTED' : contextStatus;
+    const globalQr = isUsingOwnWhatsApp ? null : contextQr;
+    const globalConnected = isUsingOwnWhatsApp ? false : contextConnected;
+
+    const personalStatus = isUsingOwnWhatsApp ? contextStatus : 'DISCONNECTED';
+    const personalQr = isUsingOwnWhatsApp ? contextQr : null;
+    const personalConnected = isUsingOwnWhatsApp ? contextConnected : false;
+
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         if (open) {
-            whatsapp.getStatus('global'); // Force fetch status when modal opens
+            whatsapp.getStatus(isUsingOwnWhatsApp ? 'personal' : 'global'); // Force fetch status when modal opens
         }
-    }, [open]);
-
-    const canUseOwnWhatsApp = user?.permissions?.canUseOwnWhatsApp || user?.role === 'SUPER_ADMIN';
-    const isUsingOwnWhatsApp = user?.useOwnWhatsApp || false;
+    }, [open, isUsingOwnWhatsApp]);
 
     // Helper to translate status
     const translateStatus = (status: string) => {
@@ -71,13 +76,28 @@ export function SettingsModal({ open, onClose, user }: SettingsModalProps) {
         }
     };
 
-    // Placeholder functions for personal WhatsApp - waiting for backend support
     const handleConnectPersonal = async () => {
-        toast.info('Funcionalidade de WhatsApp Pessoal em breve!');
+        try {
+            setIsLoading(true);
+            await whatsapp.connect('personal');
+            toast.success('Solicitado conexão Pessoal...');
+        } catch (error) {
+            toast.error('Erro ao conectar WhatsApp Pessoal');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleDisconnectPersonal = async () => {
-        toast.info('Funcionalidade de WhatsApp Pessoal em breve!');
+        try {
+            setIsLoading(true);
+            await whatsapp.disconnect('personal');
+            toast.success('Desconectado com sucesso (Pessoal)');
+        } catch (error) {
+            toast.error('Erro ao desconectar WhatsApp Pessoal');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
 
@@ -225,17 +245,20 @@ export function SettingsModal({ open, onClose, user }: SettingsModalProps) {
                     <TabsContent value="whatsapp" className="space-y-6 py-4">
 
                         {/* GLOBAL CONNECTION (Visible to Admin or if User is using Global) */}
-                        <div className="bg-muted/30 rounded-lg p-6 border border-border/50">
+                        <div className={`bg-muted/30 rounded-lg p-6 border border-border/50 ${isUsingOwnWhatsApp ? 'opacity-50 pointer-events-none' : ''}`}>
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-3">
                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center ${globalConnected ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
                                         <Smartphone className="w-5 h-5" />
                                     </div>
                                     <div>
-                                        <h3 className="font-semibold text-lg">WhatsApp Global</h3>
+                                        <h3 className="font-semibold text-lg flex items-center gap-2">
+                                            WhatsApp Global
+                                            {isUsingOwnWhatsApp && <span className="text-xs bg-muted-foreground/20 text-muted-foreground px-2 py-0.5 rounded-full">Travado</span>}
+                                        </h3>
                                         <p className="text-sm text-muted-foreground">
                                             Status: <span className={globalConnected ? 'text-green-500 font-medium' : 'text-red-500 font-medium'}>
-                                                {translateStatus(globalStatus)}
+                                                {isUsingOwnWhatsApp ? 'Desativado' : translateStatus(globalStatus)}
                                             </span>
                                         </p>
                                     </div>
@@ -243,7 +266,7 @@ export function SettingsModal({ open, onClose, user }: SettingsModalProps) {
                                 <Button
                                     variant={globalConnected ? "destructive" : "default"}
                                     onClick={globalConnected ? handleDisconnectGlobal : handleConnectGlobal}
-                                    disabled={isLoading}
+                                    disabled={isLoading || isUsingOwnWhatsApp}
                                 >
                                     {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> :
                                         globalConnected ? <WifiOff className="w-4 h-4 mr-2" /> : <Wifi className="w-4 h-4 mr-2" />}
@@ -252,7 +275,7 @@ export function SettingsModal({ open, onClose, user }: SettingsModalProps) {
                             </div>
 
                             {/* QR Code Area */}
-                            {!globalConnected && globalQr && (
+                            {!globalConnected && globalQr && !isUsingOwnWhatsApp && (
                                 <div className="flex flex-col items-center justify-center p-6 bg-white/5 rounded-lg border border-border/30 animate-in fade-in zoom-in">
                                     <div className="bg-white p-4 rounded-lg">
                                         {typeof globalQr === 'string' && globalQr.startsWith('data:image') ? (
@@ -270,10 +293,10 @@ export function SettingsModal({ open, onClose, user }: SettingsModalProps) {
 
                         {/* PERSONAL CONNECTION (Only if permitted) */}
                         {canUseOwnWhatsApp && (
-                            <div className="bg-muted/30 rounded-lg p-6 border border-border/50 opacity-70">
+                            <div className={`bg-muted/30 rounded-lg p-6 border border-border/50 transition-all ${!isUsingOwnWhatsApp ? 'opacity-70' : 'border-primary/50 bg-primary/5'}`}>
                                 <div className="flex items-center justify-between mb-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${personalConnected ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-500'}`}>
                                             <UserIcon className="w-5 h-5" />
                                         </div>
                                         <div>
@@ -282,19 +305,54 @@ export function SettingsModal({ open, onClose, user }: SettingsModalProps) {
                                                 <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Pro</span>
                                             </h3>
                                             <p className="text-sm text-muted-foreground">
-                                                Conecte seu próprio número para enviar mensagens.
+                                                {isUsingOwnWhatsApp ? (
+                                                    <span>Status: <span className={personalConnected ? 'text-green-500 font-medium' : 'text-red-500 font-medium'}>
+                                                        {translateStatus(personalStatus)}
+                                                    </span></span>
+                                                ) : 'Conecte seu próprio número para enviar mensagens.'}
                                             </p>
                                         </div>
                                     </div>
-                                    <Switch
-                                        checked={isUsingOwnWhatsApp}
-                                        onCheckedChange={() => toast.info("Em breve: Alternar para WhatsApp Pessoal")}
-                                    />
+                                    <div className="flex items-center gap-4">
+                                        <Switch
+                                            checked={isUsingOwnWhatsApp}
+                                            onCheckedChange={async (checked) => {
+                                                if (!user?.id) return;
+                                                try {
+                                                    await auth.updateProfile({ useOwnWhatsApp: checked });
+                                                    toast.success(checked ? 'WhatsApp Pessoal ativado! Global bloqueado.' : 'WhatsApp Pessoal desativado.');
+                                                    setTimeout(() => window.location.reload(), 1000);
+                                                } catch (e) {
+                                                    toast.error('Erro ao alternar modo WhatsApp');
+                                                }
+                                            }}
+                                        />
+                                        {isUsingOwnWhatsApp && (
+                                            <Button
+                                                variant={personalConnected ? "destructive" : "default"}
+                                                onClick={personalConnected ? handleDisconnectPersonal : handleConnectPersonal}
+                                                disabled={isLoading}
+                                            >
+                                                {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> :
+                                                    personalConnected ? <WifiOff className="w-4 h-4 mr-2" /> : <Wifi className="w-4 h-4 mr-2" />}
+                                                {personalConnected ? 'Desconectar' : 'Conectar'}
+                                            </Button>
+                                        )}
+                                    </div>
                                 </div>
-                                {isUsingOwnWhatsApp && (
-                                    <div className="text-center py-8">
-                                        <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground mb-2" />
-                                        <p className="text-muted-foreground">Carregando instância pessoal...</p>
+                                {/* QR Code Area */}
+                                {isUsingOwnWhatsApp && !personalConnected && personalQr && (
+                                    <div className="flex flex-col items-center justify-center p-6 bg-white/5 rounded-lg border border-border/50 animate-in fade-in zoom-in mt-4">
+                                        <div className="bg-white p-4 rounded-lg">
+                                            {typeof personalQr === 'string' && personalQr.startsWith('data:image') ? (
+                                                <img src={personalQr} alt="QR Code Pessoal" className="w-[200px] h-[200px]" />
+                                            ) : (
+                                                <QRCodeSVG value={typeof personalQr === 'string' ? personalQr : JSON.stringify(personalQr)} size={200} />
+                                            )}
+                                        </div>
+                                        <p className="mt-4 text-sm text-muted-foreground text-center">
+                                            Abra o WhatsApp no seu celular &gt; Configurações &gt; Aparelhos conectados &gt; Conectar aparelho
+                                        </p>
                                     </div>
                                 )}
                             </div>

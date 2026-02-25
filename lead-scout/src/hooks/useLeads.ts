@@ -71,6 +71,38 @@ export function useLeads(status?: string) {
     }
   };
 
+  const bulkAssignLeads = async (companyIds: string[], userId: string) => {
+    try {
+      await companies.bulkAssign(companyIds, userId);
+      // Re-fetch to get updated assigned leads or optimistically update
+      fetchData();
+    } catch (error) {
+      toast.error('Erro ao atribuir leads em massa');
+      throw error;
+    }
+  };
+
+  const bulkMoveLeads = async (companyIds: string[], stageId: string) => {
+    try {
+      await companies.bulkMove(companyIds, stageId);
+      // Optimistic update
+      setLeads((prev) => prev.map((l) => companyIds.includes(l.id) ? { ...l, stageId } : l));
+    } catch (error) {
+      toast.error('Erro ao mover leads em massa');
+      throw error;
+    }
+  };
+
+  const bulkDeleteLeads = async (companyIds: string[]) => {
+    try {
+      await companies.bulkDelete(companyIds);
+      setLeads((prev) => prev.filter((l) => !companyIds.includes(l.id)));
+    } catch (error) {
+      toast.error('Erro ao excluir leads em massa');
+      throw error;
+    }
+  };
+
   const addFolder = async (name: string, color: string) => {
     try {
       const newFolder = await foldersApi.create(name, color);
@@ -93,6 +125,9 @@ export function useLeads(status?: string) {
     addLead,
     updateLead,
     deleteLead,
+    bulkAssignLeads,
+    bulkMoveLeads,
+    bulkDeleteLeads,
     addFolder,
     moveLeadToFolder,
     refresh: fetchData

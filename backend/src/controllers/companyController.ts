@@ -227,3 +227,81 @@ export const deleteCompany = async (req: AuthRequest, res: Response) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 }
+
+export const bulkAssignCompanies = async (req: AuthRequest, res: Response) => {
+    try {
+        const { companyIds, userId: newUserId } = req.body;
+        const assignedById = req.user?.userId;
+
+        if (!Array.isArray(companyIds) || !newUserId || !assignedById) {
+            return res.status(400).json({ error: 'companyIds and userId are required' });
+        }
+
+        // Registrar no historico
+        const companies = await prisma.company.findMany({
+            where: { id: { in: companyIds } },
+            select: { id: true, responsibleId: true }
+        });
+
+        const historyRecords = companies.map(company => ({
+            companyId: company.id,
+            previousUserId: company.responsibleId,
+            newUserId,
+            assignedById
+        }));
+
+        await prisma.$transaction([
+            prisma.company.updateMany({
+                where: { id: { in: companyIds } },
+                data: { responsibleId: newUserId }
+            }),
+            prisma.leadAssignmentHistory.createMany({
+                data: historyRecords
+            })
+        ]);
+
+        res.status(200).json({ message: `${companyIds.length} leads assigned successfully` });
+    } catch (error) {
+        console.error('Bulk assign error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+}
+
+export const bulkMoveCompanies = async (req: AuthRequest, res: Response) => {
+    try {
+        const { companyIds, stageId } = req.body;
+
+        if (!Array.isArray(companyIds) || !stageId) {
+            return res.status(400).json({ error: 'companyIds and stageId are required' });
+        }
+
+        await prisma.company.updateMany({
+            where: { id: { in: companyIds } },
+            data: { stageId }
+        });
+
+        res.status(200).json({ message: `${companyIds.length} leads moved successfully` });
+    } catch (error) {
+        console.error('Bulk move error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+}
+
+export const bulkDeleteCompanies = async (req: AuthRequest, res: Response) => {
+    try {
+        const { companyIds } = req.body;
+
+        if (!Array.isArray(companyIds)) {
+            return res.status(400).json({ error: 'companyIds must be an array' });
+        }
+
+        await prisma.company.deleteMany({
+            where: { id: { in: companyIds } }
+        });
+
+        res.status(200).json({ message: `${companyIds.length} leads deleted successfully` });
+    } catch (error) {
+        console.error('Bulk delete error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+}

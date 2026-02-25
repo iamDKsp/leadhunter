@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLeads } from '@/hooks/useLeads';
 import { Lead } from '@/types/lead';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import {
     Table,
@@ -27,6 +28,22 @@ export default function LeadManagement() {
 
     // Multi-select State
     const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
+    const [selectCount, setSelectCount] = useState<string>('');
+
+    const handleSelectAmount = () => {
+        const count = parseInt(selectCount, 10);
+        if (isNaN(count) || count <= 0) {
+            toast.error("Insira uma quantidade válida.");
+            return;
+        }
+        if (count > leads.length) {
+            toast.error(`Existem apenas ${leads.length} leads disponíveis.`);
+            return;
+        }
+
+        const idsToSelect = leads.slice(0, count).map(l => l.id);
+        setSelectedLeadIds(idsToSelect);
+    };
 
     const handleAssignClick = (lead: Lead) => {
         setSelectedLead(lead);
@@ -72,6 +89,23 @@ export default function LeadManagement() {
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                        <Input
+                            type="number"
+                            min="1"
+                            max={leads.length}
+                            placeholder="Qtd..."
+                            className="w-24 h-9"
+                            value={selectCount}
+                            onChange={(e) => setSelectCount(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSelectAmount();
+                            }}
+                        />
+                        <Button variant="secondary" size="sm" onClick={handleSelectAmount}>
+                            Selecionar
+                        </Button>
+                    </div>
                     {selectedLeadIds.length > 0 && (
                         <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-5">
                             <span className="text-sm text-muted-foreground">
@@ -171,6 +205,7 @@ export default function LeadManagement() {
                 leadIds={selectedLead ? undefined : selectedLeadIds} // Pass bulk IDs if no single lead selected
                 leadName={selectedLead?.name}
                 currentResponsibleId={selectedLead?.responsibleId}
+                newStatus="ACTIVE"
                 onAssigned={() => {
                     refresh();
                     setSelectedLead(null);

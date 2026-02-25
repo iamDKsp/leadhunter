@@ -19,6 +19,7 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+            console.error('API Error:', error.response.status, error.config.url, error.response.data);
             localStorage.removeItem('token');
             if (window.location.pathname !== '/login') {
                 window.location.href = '/login';
@@ -81,6 +82,18 @@ export const companies = {
     import: async (placeId: string, folderId?: string, customData?: any) => {
         const response = await api.post<Lead>('/companies/import', { placeId, folderId, customData });
         return response.data;
+    },
+    bulkAssign: async (companyIds: string[], userId: string) => {
+        const response = await api.post('/companies/bulk-assign', { companyIds, userId });
+        return response.data;
+    },
+    bulkMove: async (companyIds: string[], stageId: string) => {
+        const response = await api.post('/companies/bulk-move', { companyIds, stageId });
+        return response.data;
+    },
+    bulkDelete: async (companyIds: string[]) => {
+        const response = await api.post('/companies/bulk-delete', { companyIds });
+        return response.data;
     }
 };
 
@@ -136,6 +149,18 @@ export const whatsapp = {
     },
     disconnect: async (type: 'global' | 'personal' = 'global') => {
         const response = await api.post(`/whatsapp/disconnect`, { type });
+        return response.data;
+    },
+    getMessages: async (chatId: string) => {
+        const response = await api.get(`/messages/${encodeURIComponent(chatId)}`);
+        return response.data;
+    },
+    sendMessage: async (to: string, message: string) => {
+        const response = await api.post(`/whatsapp/send`, { to, message });
+        return response.data;
+    },
+    sendMedia: async (to: string, media: string, type: 'ptt' | 'image') => {
+        const response = await api.post(`/whatsapp/send-media`, { to, media, type });
         return response.data;
     }
 };

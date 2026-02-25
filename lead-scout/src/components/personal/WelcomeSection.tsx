@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, TrendingUp, Trophy, Target } from "lucide-react";
+import YouTubeAudioPlayer from './YouTubeAudioPlayer';
 
 interface WelcomeSectionProps {
     userName: string;
@@ -140,6 +141,11 @@ const WelcomeSection = ({ userName }: WelcomeSectionProps) => {
                                     transition={{ duration: 5, ease: "linear", repeat: Infinity }}
                                 />
                             </div>
+                        </div>
+
+                        {/* Audio Player now positioned on the right */}
+                        <div className="mt-4 w-full flex justify-end">
+                            <YouTubeAudioPlayer />
                         </div>
                     </div>
                 </div>

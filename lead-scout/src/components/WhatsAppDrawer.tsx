@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useWhatsApp } from '@/context/WhatsAppContext';
+import { whatsapp } from '@/services/api';
 
 interface WhatsAppMessage {
     id: string;
@@ -36,7 +37,7 @@ interface WhatsAppDrawerProps {
     targetName?: string | null;
 }
 
-const BACKEND_URL = 'http://localhost:3000';
+// Removed redundant BACKEND_URL
 
 const formatPhoneNumber = (phone: string | undefined | null) => {
     if (!phone) return '';
@@ -84,16 +85,12 @@ export const WhatsAppDrawer = ({ open, onOpenChange, targetNumber, targetName }:
 
         const fetchMessages = async () => {
             try {
-                // Encode the chatId to handle special characters if any (though usually just numbers and @)
-                const response = await fetch(`${BACKEND_URL}/messages/${encodeURIComponent(activeChatId)}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log("Fetched messages:", data);
-                    setMessages(data);
-                    setTimeout(() => {
-                        scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-                    }, 100);
-                }
+                const data = await whatsapp.getMessages(activeChatId);
+                console.log("Fetched messages:", data);
+                setMessages(data);
+                setTimeout(() => {
+                    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+                }, 100);
             } catch (error) {
                 console.error("Failed to fetch messages:", error);
             }
@@ -205,21 +202,8 @@ export const WhatsAppDrawer = ({ open, onOpenChange, targetNumber, targetName }:
             const base64Media = reader.result as string;
 
             try {
-                const response = await fetch(`${BACKEND_URL}/whatsapp/send-media`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        to: activeChatId,
-                        media: base64Media,
-                        type: type
-                    })
-                });
-
-                if (response.ok) {
-                    // Success is handled by the socket event 'whatsapp_message'
-                } else {
-                    toast.error("Erro ao enviar mídia.");
-                }
+                await whatsapp.sendMedia(activeChatId, base64Media, type);
+                // Success is handled by the socket event 'whatsapp_message'
             } catch (e) {
                 toast.error("Erro ao enviar mídia.");
             }
@@ -243,20 +227,11 @@ export const WhatsAppDrawer = ({ open, onOpenChange, targetNumber, targetName }:
         }
 
         try {
-            const response = await fetch(`${BACKEND_URL}/whatsapp/send`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ to: target, message: input })
-            });
-
-            if (response.ok) {
-                setInput('');
-                setTimeout(() => {
-                    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-                }, 100);
-            } else {
-                toast.error("Erro ao enviar mensagem");
-            }
+            await whatsapp.sendMessage(target, input);
+            setInput('');
+            setTimeout(() => {
+                scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
         } catch (e) {
             console.error("Failed to send", e);
             toast.error("Erro ao enviar mensagem");
@@ -267,7 +242,7 @@ export const WhatsAppDrawer = ({ open, onOpenChange, targetNumber, targetName }:
         if (!confirm("Tem certeza que deseja desconectar o WhatsApp? Você precisará escanear o QR Code novamente.")) return;
 
         try {
-            await fetch(`${BACKEND_URL}/whatsapp/logout`, { method: 'POST' });
+            await whatsapp.disconnect(); // logout is basically disconnect global or whatever the current session is
             toast.success("Desconectado com sucesso.");
         } catch (e) {
             console.error(e);

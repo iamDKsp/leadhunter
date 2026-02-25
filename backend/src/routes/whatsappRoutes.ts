@@ -8,8 +8,8 @@ const router = express.Router();
 
 router.use(authenticateToken);
 
-router.post('/connect', checkPermission('canManageConnections'), connectWhatsApp);
-router.post('/disconnect', checkPermission('canManageConnections'), disconnectWhatsApp);
+router.post('/connect', connectWhatsApp);
+router.post('/disconnect', disconnectWhatsApp);
 router.get('/status', checkPermission('canViewChat'), getStatus);
 
 export default router;

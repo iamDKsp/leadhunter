@@ -8,6 +8,7 @@ import StageEditor from '@/components/crm/StageEditor';
 import LeadFormModal from '@/components/crm/LeadFormModal';
 import { LeadAssignmentModal } from '@/components/LeadAssignmentModal';
 import { LeadFilterModal, FilterState } from '@/components/crm/LeadFilterModal';
+import { BulkActionsToolbar } from '@/components/crm/BulkActionsToolbar';
 import { LayoutGrid, List, Settings2, Search, Filter, Plus } from 'lucide-react';
 import { useLeads } from '@/hooks/useLeads';
 import { toast } from 'sonner';
@@ -32,7 +33,16 @@ interface LeadsCRMProps {
 }
 
 const LeadsCRM = ({ user }: LeadsCRMProps) => {
-    const { leads, addLead, updateLead, deleteLead, refresh } = useLeads('ACTIVE');
+    const {
+        leads,
+        addLead,
+        updateLead,
+        deleteLead,
+        bulkAssignLeads,
+        bulkMoveLeads,
+        bulkDeleteLeads,
+        refresh
+    } = useLeads('ACTIVE');
     const isMobile = useIsMobile();
 
     const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -60,6 +70,23 @@ const LeadsCRM = ({ user }: LeadsCRMProps) => {
     const [stageEditorOpen, setStageEditorOpen] = useState(false);
     const [leadFormOpen, setLeadFormOpen] = useState(false);
     const [editingLead, setEditingLead] = useState<Lead | null>(null);
+
+    // Bulk Actions state
+    const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
+
+    const handleSelectLead = (leadId: string, selected: boolean) => {
+        setSelectedLeads(prev =>
+            selected ? [...prev, leadId] : prev.filter(id => id !== leadId)
+        );
+    };
+
+    const handleSelectAll = (selected: boolean) => {
+        if (selected) {
+            setSelectedLeads(filteredLeads.map(l => l.id));
+        } else {
+            setSelectedLeads([]);
+        }
+    };
 
     // Lead assignment state
     const [assignModalOpen, setAssignModalOpen] = useState(false);
@@ -194,6 +221,39 @@ const LeadsCRM = ({ user }: LeadsCRMProps) => {
         setAssignModalOpen(true);
     };
 
+    const handleBulkAssign = async (userId: string) => {
+        try {
+            await bulkAssignLeads(selectedLeads, userId);
+            toast.success(`${selectedLeads.length} leads atribuídos com sucesso!`);
+            setSelectedLeads([]);
+            refresh();
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleBulkMove = async (stageId: string) => {
+        try {
+            await bulkMoveLeads(selectedLeads, stageId);
+            toast.success(`${selectedLeads.length} leads movidos com sucesso!`);
+            setSelectedLeads([]);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        try {
+            await bulkDeleteLeads(selectedLeads);
+            toast.success(`${selectedLeads.length} leads excluídos com sucesso!`);
+            setSelectedLeads([]);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const hasManagePermissions = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN' || user?.permissions?.canManageLeads;
+
     return (
         <div className="flex-1 overflow-hidden p-4 md:p-6 flex flex-col h-full">
             {/* Toolbar */}
@@ -266,6 +326,18 @@ const LeadsCRM = ({ user }: LeadsCRMProps) => {
 
             {/* Content */}
             <div className="flex-1 overflow-hidden">
+                {selectedLeads.length > 0 && viewMode === 'list' && (
+                    <div className="mb-4">
+                        <BulkActionsToolbar
+                            selectedCount={selectedLeads.length}
+                            stages={stages}
+                            onClearSelection={() => setSelectedLeads([])}
+                            onBulkAssign={handleBulkAssign}
+                            onBulkMove={handleBulkMove}
+                            onBulkDelete={handleBulkDelete}
+                        />
+                    </div>
+                )}
                 {viewMode === 'kanban' ? (
                     <KanbanBoard
                         leads={filteredLeads}
@@ -284,6 +356,10 @@ const LeadsCRM = ({ user }: LeadsCRMProps) => {
                             onViewLead={handleViewLead}
                             onEditLead={handleEditLead}
                             onDeleteLead={handleDeleteLead}
+                            selectedLeads={selectedLeads}
+                            onSelectLead={handleSelectLead}
+                            onSelectAll={handleSelectAll}
+                            selectionEnabled={hasManagePermissions}
                         />
                     </div>
                 )}

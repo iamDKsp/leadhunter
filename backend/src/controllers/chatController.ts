@@ -16,22 +16,24 @@ const getEffectiveSessionId = async (userId: string) => {
     };
 };
 
-// Helper to normalize a phone into all possible chatId variations
 const getChatIdVariations = (phone: string): string[] => {
     const clean = phone.replace(/\D/g, '');
     const variations = new Set<string>();
 
     variations.add(`${clean}@c.us`);
     variations.add(`${clean}@s.whatsapp.net`);
+    variations.add(`${clean}@lid`); // Fallback for linked devices
 
     if (clean.startsWith('55') && clean.length > 11) {
         const noPrefix = clean.substring(2);
         variations.add(`${noPrefix}@c.us`);
         variations.add(`${noPrefix}@s.whatsapp.net`);
+        variations.add(`${noPrefix}@lid`);
     } else if (clean.length <= 11) {
         const withPrefix = `55${clean}`;
         variations.add(`${withPrefix}@c.us`);
         variations.add(`${withPrefix}@s.whatsapp.net`);
+        variations.add(`${withPrefix}@lid`);
     }
 
     return Array.from(variations);

@@ -17,7 +17,7 @@ import accessGroupRoutes from './routes/accessGroupRoutes';
 import leadAssignmentRoutes from './routes/leadAssignmentRoutes';
 import personalRoutes from './routes/personalRoutes';
 import monitoringRoutes from './routes/monitoringRoutes';
-import stageRoutes from './routes/stageRoutes';
+import stagesRoutes from './routes/stageRoutes';
 import chatRoutes from './routes/chatRoutes';
 import whatsappRoutes from './routes/whatsappRoutes';
 
@@ -39,6 +39,19 @@ app.use(cors({
 }));
 app.use(compression());
 app.use(express.json({ limit: '50mb' }));
+
+// Debug middleware to log ALL 403/401 responses
+app.use((req, res, next) => {
+    const originalStatus = res.status;
+    res.status = function (code) {
+        if (code === 401 || code === 403) {
+            console.log(`[DENIED] ${req.method} ${req.url} - Status: ${code}`);
+        }
+        return originalStatus.apply(this, arguments as any);
+    };
+    next();
+});
+
 app.use('/media', express.static('public/media'));
 app.use('/uploads', express.static('public/uploads'));
 
@@ -106,7 +119,7 @@ app.use('/whatsapp', whatsappRoutes);
 app.use('/leads', leadAssignmentRoutes);
 app.use('/personal', personalRoutes);
 app.use('/monitoring', monitoringRoutes);
-app.use('/stages', stageRoutes);
+app.use('/stages', stagesRoutes);
 app.use('/chat', chatRoutes);
 
 const httpServer = createServer(app);

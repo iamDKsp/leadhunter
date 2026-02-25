@@ -75,7 +75,7 @@ export const IncomingMessageNotification = ({
     };
 
     return (
-        <div className="fixed bottom-6 right-6 z-[100] space-y-3 max-w-sm pointer-events-none">
+        <div className="fixed bottom-6 right-6 z-[9999] space-y-3 max-w-sm pointer-events-none">
             {notifications.slice(0, 3).map((notification, index) => {
                 const timeStr = new Date(notification.timestamp * 1000).toLocaleTimeString([], {
                     hour: '2-digit',
@@ -88,13 +88,11 @@ export const IncomingMessageNotification = ({
                         className={cn(
                             "pointer-events-auto",
                             "bg-card/95 backdrop-blur-xl border border-primary/40 rounded-xl shadow-2xl shadow-primary/10",
-                            "p-4 animate-fade-in",
-                            "transition-all duration-300 ease-out",
-                            "hover:border-primary/60 hover:shadow-primary/20",
+                            "p-4 animate-in slide-in-from-right-8 fade-in fill-mode-both duration-300",
+                            "transition-all hover:border-primary/60 hover:shadow-primary/20",
                         )}
                         style={{
                             animationDelay: `${index * 80}ms`,
-                            animation: `slideInRight 0.4s ease-out ${index * 80}ms both`,
                         }}
                     >
                         <div className="flex items-start gap-3">
@@ -152,7 +150,7 @@ export const IncomingMessageNotification = ({
             })}
 
             {notifications.length > 3 && (
-                <div className="text-center pointer-events-auto">
+                <div className="text-center pointer-events-auto animate-in fade-in duration-300">
                     <button
                         className="text-xs text-muted-foreground bg-card/90 backdrop-blur-xl rounded-lg px-3 py-2 border border-border hover:border-primary/30 transition-colors"
                         onClick={onDismissAll}
@@ -161,20 +159,6 @@ export const IncomingMessageNotification = ({
                     </button>
                 </div>
             )}
-
-            {/* Keyframe animation */}
-            <style>{`
-                @keyframes slideInRight {
-                    from {
-                        opacity: 0;
-                        transform: translateX(100px) scale(0.95);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateX(0) scale(1);
-                    }
-                }
-            `}</style>
         </div>
     );
 };

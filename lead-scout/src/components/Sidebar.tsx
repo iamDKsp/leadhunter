@@ -59,8 +59,8 @@ export function Sidebar({ folders, activeView, onViewChange, onAddFolder, isColl
     )}>
       {/* Logo */}
       <div className="p-4 border-b border-border/30 flex items-center gap-3">
-        <div className="w-10 h-10 bg-yellow-500 rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg">
-          <Crown className="w-6 h-6 text-background" />
+        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0">
+          <img src="/logo-lion.png" alt="Lead Hunter Logo" className="w-full h-full object-contain" />
         </div>
         {!isCollapsed && (
           <div className="animate-fade-in">

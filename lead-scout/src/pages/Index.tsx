@@ -25,11 +25,15 @@ import { toast } from 'sonner';
 import { User } from '@/types/auth'; // Import User type
 import { canViewPage } from '@/utils/permissions'; // Import permission helper
 import { SettingsModal } from '@/components/SettingsModal';
+import { useWhatsApp } from '@/context/WhatsAppContext'; // Import useWhatsApp hook
 
 const Index = () => {
   const navigate = useNavigate();
   const { view } = useParams();
   const [user, setUser] = useState<User | undefined>(undefined);
+
+  const { socket } = useWhatsApp();
+  const [connectionStatus, setConnectionStatus] = useState<'CONNECTED' | 'DISCONNECTED' | 'CONNECTING'>('DISCONNECTED');
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -186,7 +190,8 @@ const Index = () => {
       case 'personal':
         return { title: 'Pessoal', subtitle: 'Seu desempenho e metas' };
       case 'leads':
-        return { title: 'CRM', subtitle: `${leads.length} empresas cadastradas` };
+        const activeLeads = leads.filter(l => l.status === 'ACTIVE');
+        return { title: 'CRM', subtitle: `${activeLeads.length} oportunidades ativas` };
       case 'monitoring':
         return { title: 'Monitoramento', subtitle: 'Acompanhamento da equipe em tempo real' };
       case 'search':
@@ -246,7 +251,7 @@ const Index = () => {
     }
 
     if (activeView === 'conversas') {
-      return <Conversas />;
+      return <Conversas user={user} />;
     }
 
     if (activeView === 'leads') {

@@ -47,10 +47,12 @@ export function Users() {
     const [customTag, setCustomTag] = useState('');
     const [customTagColor, setCustomTagColor] = useState('#000000');
 
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
     const fetchUsers = async () => {
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.get('http://localhost:3000/auth/users', {
+            const response = await axios.get(`${API_URL}/auth/users`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setUsers(response.data);
@@ -98,7 +100,7 @@ export function Users() {
         try {
             if (editingUser) {
                 // Edit mode
-                await axios.put(`http://localhost:3000/auth/users/${editingUser.id}`, {
+                await axios.put(`${API_URL}/auth/users/${editingUser.id}`, {
                     name,
                     email,
                     interfacePreference,
@@ -112,7 +114,7 @@ export function Users() {
                 toast.success('Usuário atualizado com sucesso!');
             } else {
                 // Create mode
-                await axios.post('http://localhost:3000/auth/create-user', {
+                await axios.post(`${API_URL}/auth/create-user`, {
                     email,
                     password,
                     name,
@@ -142,7 +144,7 @@ export function Users() {
 
         try {
             const token = localStorage.getItem('token');
-            await axios.delete(`http://localhost:3000/auth/users/${id}`, {
+            await axios.delete(`${API_URL}/auth/users/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             toast.success('Usuário excluído com sucesso!');

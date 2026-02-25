@@ -1,5 +1,6 @@
 import { Lead, Stage } from '@/types/lead';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Eye, Edit, Trash2, Phone, Mail, MapPin, MessageCircle } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Card, CardContent } from '@/components/ui/card';
@@ -14,9 +15,23 @@ interface LeadsTableProps {
     onViewLead: (lead: Lead) => void;
     onEditLead: (lead: Lead) => void;
     onDeleteLead: (lead: Lead) => void;
+    selectedLeads?: string[];
+    onSelectLead?: (leadId: string, selected: boolean) => void;
+    onSelectAll?: (selected: boolean) => void;
+    selectionEnabled?: boolean;
 }
 
-const LeadsTable = ({ leads, stages, onViewLead, onEditLead, onDeleteLead }: LeadsTableProps) => {
+const LeadsTable = ({
+    leads,
+    stages,
+    onViewLead,
+    onEditLead,
+    onDeleteLead,
+    selectedLeads = [],
+    onSelectLead,
+    onSelectAll,
+    selectionEnabled = false
+}: LeadsTableProps) => {
     const isMobile = useIsMobile();
     const navigate = useNavigate();
     const getStage = (stageId?: string) => stages.find(s => s.id === stageId);
@@ -57,7 +72,15 @@ const LeadsTable = ({ leads, stages, onViewLead, onEditLead, onDeleteLead }: Lea
                         <Card key={lead.id} className="bg-card/60 backdrop-blur-sm border-border/30 overflow-hidden">
                             <CardContent className="p-4 space-y-3">
                                 <div className="flex justify-between items-start gap-2">
-                                    <div className="space-y-1 overflow-hidden">
+                                    {selectionEnabled && (
+                                        <div className="pt-1">
+                                            <Checkbox
+                                                checked={selectedLeads.includes(lead.id)}
+                                                onCheckedChange={(checked) => onSelectLead?.(lead.id, checked as boolean)}
+                                            />
+                                        </div>
+                                    )}
+                                    <div className="space-y-1 overflow-hidden flex-1">
                                         <h3 className="font-semibold text-foreground truncate text-lg pr-2">{lead.name}</h3>
                                         {stage && (
                                             <span
@@ -148,6 +171,14 @@ const LeadsTable = ({ leads, stages, onViewLead, onEditLead, onDeleteLead }: Lea
                 <Table>
                     <TableHeader>
                         <TableRow className="border-border/30 hover:bg-transparent">
+                            {selectionEnabled && (
+                                <TableHead className="w-12 text-center">
+                                    <Checkbox
+                                        checked={leads.length > 0 && selectedLeads.length === leads.length}
+                                        onCheckedChange={(checked) => onSelectAll?.(checked as boolean)}
+                                    />
+                                </TableHead>
+                            )}
                             <TableHead className="text-muted-foreground">Nome</TableHead>
                             <TableHead className="text-muted-foreground">Contato</TableHead>
                             <TableHead className="text-muted-foreground">Etapa</TableHead>
@@ -159,8 +190,17 @@ const LeadsTable = ({ leads, stages, onViewLead, onEditLead, onDeleteLead }: Lea
                     <TableBody>
                         {leads.map((lead) => {
                             const stage = getStage(lead.stageId);
+                            const isSelected = selectedLeads.includes(lead.id);
                             return (
-                                <TableRow key={lead.id} className="border-border/30">
+                                <TableRow key={lead.id} className={`border-border/30 ${isSelected ? 'bg-primary/5' : ''}`}>
+                                    {selectionEnabled && (
+                                        <TableCell className="w-12 text-center">
+                                            <Checkbox
+                                                checked={isSelected}
+                                                onCheckedChange={(checked) => onSelectLead?.(lead.id, checked as boolean)}
+                                            />
+                                        </TableCell>
+                                    )}
                                     <TableCell>
                                         <div>
                                             <p className="font-medium text-foreground">{lead.name}</p>

@@ -12,81 +12,46 @@ interface WhatsAppConnectModalProps {
     onClose: () => void;
 }
 
-const BACKEND_URL = 'http://localhost:3000'; // Should use env var but keeping simple for now
+import { useWhatsApp } from '@/context/WhatsAppContext';
 
 export function WhatsAppConnectModal({ isOpen, onClose }: WhatsAppConnectModalProps) {
+    const {
+        socket,
+        status: contextStatus,
+        qrCode: contextQr,
+        setTargetSessionId
+    } = useWhatsApp();
+
     const [qrCode, setQrCode] = useState<string | null>(null);
     const [status, setStatus] = useState<string>('INIT');
     const [loading, setLoading] = useState(false);
-    const [sessionId, setSessionId] = useState<string | null>(null);
 
-    // Get current user ID (mock decoding or store in localStorage)
-    // Ideally we use a context, but for brevity:
-    const token = localStorage.getItem('token');
-    // We rely on backend sending correct sessionId in events that matches user
+    // Get current user ID to set session
+    const storedUser = localStorage.getItem('user');
+    const user = storedUser ? JSON.parse(storedUser) : null;
 
     useEffect(() => {
-        if (!isOpen) return;
-
-        const socket = io(BACKEND_URL);
-
-        socket.on('connect', () => {
-            console.log('Connected to socket for binding');
-            // Check status immediately
-            checkStatus();
-        });
-
-        socket.on('whatsapp_qr', (data: any) => {
-            // Check if data is string (old global) or object (new session aware)
-            // AND check if it belongs to THIS user (we might need to identify ourselves to socket)
-            // Since public socket broadcasts to everyone, we should filter by sessionId if provided.
-
-            // For now, let's assume we triggered the connect, so the next QR is ours? 
-            // Risky. The 'connect' endpoint should probably return the QR in response if possible but it's async.
-
-            // Better: filtering by sessionId logic on Client side require we know our ID.
-            if (data.sessionId) {
-                // We'll need to know our ID.
-                // Let's assume the backend 'connectSession' call tells us we started, and we listen.
-
-                // For simplicity now, just display if it looks like a QR code data URL.
-                if (data.qr) setQrCode(data.qr);
-            } else if (typeof data === 'string') {
-                // Global fallback
-                // setQrCode(data); 
-            }
-        });
-
-        socket.on('whatsapp_status', (data: any) => {
-            // Filter logic...
-            if (data.status === 'CONNECTED') {
-                setStatus('CONNECTED');
-                toast.success('WhatsApp Conectado!');
-                setTimeout(onClose, 2000);
-            } else if (data.status === 'DISCONNECTED') {
-                setStatus('DISCONNECTED');
-                if (data.qr) setQrCode(data.qr);
-            }
-        });
-
-        return () => {
-            socket.disconnect();
-        };
-    }, [isOpen]);
+        if (isOpen && user?.id) {
+            setTargetSessionId(user.id);
+            // Sync status from context
+            setStatus(contextStatus);
+            setQrCode(contextQr);
+        }
+    }, [isOpen, contextStatus, contextQr, user]);
 
     const checkStatus = async () => {
         try {
             setLoading(true);
-            const res = await api.get('/chat/status');
+            const res = await api.get('/whatsapp/status?type=personal');
+            setStatus(res.data.status);
             if (res.data.status === 'CONNECTED') {
-                setStatus('CONNECTED');
+                toast.success('WhatsApp já está conectado!');
             } else {
-                // If not connected, trigger connection
-                setStatus('DISCONNECTED');
                 connect();
             }
         } catch (e) {
             console.error(e);
+            toast.error('Erro ao verificar status');
         } finally {
             setLoading(false);
         }
@@ -96,10 +61,10 @@ export function WhatsAppConnectModal({ isOpen, onClose }: WhatsAppConnectModalPr
         try {
             setLoading(true);
             setQrCode(null);
-            await api.post('/chat/connect');
-            toast.info('Iniciando sessão, aguarde o QR Code...');
+            await api.post('/whatsapp/connect', { type: 'personal' });
+            toast.info('Iniciando sessão pessoal, aguarde o QR Code...');
         } catch (e) {
-            toast.error('Erro ao iniciar conexão');
+            toast.error('Erro ao iniciar conexão pessoal');
         } finally {
             setLoading(false);
         }
@@ -107,12 +72,15 @@ export function WhatsAppConnectModal({ isOpen, onClose }: WhatsAppConnectModalPr
 
     const logout = async () => {
         try {
-            await api.post('/chat/logout');
+            setLoading(true);
+            await api.post('/whatsapp/disconnect', { type: 'personal' });
             setStatus('DISCONNECTED');
             setQrCode(null);
-            toast.success('Desconectado.');
+            toast.success('WhatsApp Pessoal desconectado.');
         } catch (e) {
-            toast.error('Erro ao desconectar');
+            toast.error('Erro ao desconectar WhatsApp Pessoal');
+        } finally {
+            setLoading(false);
         }
     };
 

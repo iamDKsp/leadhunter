@@ -16,17 +16,7 @@ import api from "@/services/api";
 import { useWhatsApp } from "@/context/WhatsAppContext";
 import { Button } from "@/components/ui/button";
 import { QrCode } from "lucide-react";
-import { jwtDecode } from 'jwt-decode';
-
-interface DecodedToken {
-    user: {
-        id: string;
-        permissions?: {
-            canUseOwnWhatsApp?: boolean;
-        };
-        useOwnWhatsApp?: boolean;
-    }
-}
+import { User } from "@/types/auth";
 
 // Helper to normalize chatId for matching (strips JID suffix and country prefix)
 const normalizeChatId = (chatId: string): string => {
@@ -40,34 +30,37 @@ const normalizeChatId = (chatId: string): string => {
     return clean;
 };
 
-const Conversas = () => {
+import { User } from "@/types/auth";
+
+const Conversas = ({ user }: { user?: User }) => {
     const [searchParams, setSearchParams] = useSearchParams();
     const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
     const activeConversationIdRef = useRef<string | null>(null);
+    const messageListenerRef = useRef<((msg: any) => void) | null>(null);
+    const statusListenerRef = useRef<((data: any) => void) | null>(null);
+    const messagePollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const conversationPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const [messages, setMessages] = useState<Record<string, Message[]>>({});
     const [followUps, setFollowUps] = useState<FollowUp[]>([]);
     const [isSchedulerOpen, setIsSchedulerOpen] = useState(false);
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
 
-    // Check permissions from token
-    const token = localStorage.getItem('token');
-    let canUseOwnWhatsApp = false;
-    let useOwnWhatsApp = false;
-    let initialUserId = '';
-
-    if (token) {
-        try {
-            const decoded = jwtDecode<DecodedToken>(token);
-            canUseOwnWhatsApp = decoded.user.permissions?.canUseOwnWhatsApp || false;
-            useOwnWhatsApp = decoded.user.useOwnWhatsApp || false;
-            initialUserId = decoded.user.id;
-        } catch (e) { }
-    }
+    // Use the user prop for mode and permissions instead of manual token decoding
+    const canUseOwnWhatsApp = user?.permissions?.canUseOwnWhatsApp || false;
+    const useOwnWhatsApp = user?.useOwnWhatsApp || false;
+    const initialUserId = user?.id || '';
 
     const { socket } = useWhatsApp();
     const [userId, setUserId] = useState(initialUserId);
     const [connectionStatus, setConnectionStatus] = useState<'CONNECTED' | 'DISCONNECTED' | 'CONNECTING'>('DISCONNECTED');
+
+    // Update local state if user prop changes
+    useEffect(() => {
+        if (user?.id) {
+            setUserId(user.id);
+        }
+    }, [user]);
 
     // CRM Data
     const [leads, setLeads] = useState<Lead[]>([]);
@@ -85,15 +78,9 @@ const Conversas = () => {
         fetchLeads();
 
         // Initial status check
-        api.get('/chat/status').then(res => {
-            // Logic to determine if we should show connected based on mode
-            const status = res.data.status;
-            // If we are in personal mode, we might need a specific endpoint or check the session status
-            // For now assuming getWhatsAppStatus returns GLOBAL status, which matches default behavior.
-            // If personal, we rely on socket 'whatsapp_status' events.
-            if (!useOwnWhatsApp) {
-                setConnectionStatus(status);
-            }
+        const statusType = useOwnWhatsApp ? 'personal' : 'global';
+        api.get(`/whatsapp/status?type=${statusType}`).then(res => {
+            setConnectionStatus(res.data.status);
         }).catch(err => console.error("Failed to fetch initial status", err));
 
     }, []); // Run once on mount
@@ -127,12 +114,14 @@ const Conversas = () => {
 
     useEffect(() => {
         if (socket) {
-            socket.on('whatsapp_status', (data: any) => {
-                console.log("WhatsApp Status Update:", data);
-
+            // --- STATUS LISTENER ---
+            // Remove previous listener if it exists (named ref so we don't nuke global listeners)
+            if (statusListenerRef.current) {
+                socket.off('whatsapp_status', statusListenerRef.current);
+            }
+            const statusHandler = (data: any) => {
                 const targetSessionId = useOwnWhatsApp ? userId : 'GLOBAL';
                 const eventSessionId = data.sessionId || 'GLOBAL';
-
                 if (eventSessionId === targetSessionId) {
                     if (data.status === 'CONNECTED' || data.status === 'READY') {
                         setConnectionStatus('CONNECTED');
@@ -143,9 +132,16 @@ const Conversas = () => {
                         setConnectionStatus('CONNECTING');
                     }
                 }
-            });
+            };
+            statusListenerRef.current = statusHandler;
+            socket.on('whatsapp_status', statusHandler);
 
-            socket.on('whatsapp_message', (msg: any) => {
+            // --- MESSAGE LISTENER ---
+            // Remove previous listener (named ref, preserves other global listeners)
+            if (messageListenerRef.current) {
+                socket.off('whatsapp_message', messageListenerRef.current);
+            }
+            const messageHandler = (msg: any) => {
                 // Always refresh the conversation sidebar
                 fetchConversations();
 
@@ -158,18 +154,25 @@ const Conversas = () => {
                     const normalizedActive = normalizeChatId(currentActive);
 
                     if (normalizedIncoming === normalizedActive) {
-                        // Re-fetch messages from server for the active chat
-                        // This ensures perfect consistency regardless of chatId format
                         fetchMessages(currentActive);
                     }
                 }
-            });
+            };
+            messageListenerRef.current = messageHandler;
+            socket.on('whatsapp_message', messageHandler);
         }
 
         return () => {
             if (socket) {
-                socket.off('whatsapp_message');
-                socket.off('whatsapp_status');
+                // Only remove OUR specific handlers, not all global listeners
+                if (messageListenerRef.current) {
+                    socket.off('whatsapp_message', messageListenerRef.current);
+                    messageListenerRef.current = null;
+                }
+                if (statusListenerRef.current) {
+                    socket.off('whatsapp_status', statusListenerRef.current);
+                    statusListenerRef.current = null;
+                }
             }
         };
     }, [socket]);
@@ -231,8 +234,14 @@ const Conversas = () => {
         }
     };
 
-    // Load messages when active conversation changes
+    // Load messages when active conversation changes + start polling
     useEffect(() => {
+        // Clear previous message poll
+        if (messagePollRef.current) {
+            clearInterval(messagePollRef.current);
+            messagePollRef.current = null;
+        }
+
         if (activeConversationId) {
             api.put(`/chat/${activeConversationId}/read`).catch(err => console.error("Failed to mark as read", err));
             fetchMessages(activeConversationId);
@@ -240,15 +249,39 @@ const Conversas = () => {
             // Find associated Lead
             const conversation = conversations.find(c => c.id === activeConversationId);
             if (conversation && conversation.phone) {
-                // Normalize phones for comparison (remove non-digits)
                 const chatPhone = conversation.phone.replace(/\D/g, '');
                 const found = leads.find(l => (l.phone && l.phone.replace(/\D/g, '').includes(chatPhone)) || (l.phone && chatPhone.includes(l.phone.replace(/\D/g, ''))));
                 setCurrentLead(found);
             } else {
                 setCurrentLead(undefined);
             }
+
+            // Poll for new messages every 5 seconds as a reliable fallback
+            messagePollRef.current = setInterval(() => {
+                const active = activeConversationIdRef.current;
+                if (active) fetchMessages(active);
+            }, 5000);
         }
+
+        return () => {
+            if (messagePollRef.current) {
+                clearInterval(messagePollRef.current);
+                messagePollRef.current = null;
+            }
+        };
     }, [activeConversationId, conversations, leads]);
+
+    // Poll conversations list every 10 seconds to keep sidebar fresh
+    useEffect(() => {
+        conversationPollRef.current = setInterval(() => {
+            fetchConversations();
+        }, 10000);
+        return () => {
+            if (conversationPollRef.current) {
+                clearInterval(conversationPollRef.current);
+            }
+        };
+    }, []);
 
     const fetchMessages = async (chatId: string) => {
         try {

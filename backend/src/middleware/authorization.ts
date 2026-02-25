@@ -102,20 +102,23 @@ export const checkPermission = (permission: PermissionKey) => {
 
             // Super admins bypass all permission checks
             if (req.userPermissions?.role === 'SUPER_ADMIN') {
+                console.log(`[PERM] ${req.method} ${req.originalUrl} - SUPER_ADMIN bypass`);
                 return next();
             }
 
             // Check the specific permission
             if (req.userPermissions?.permissions?.[permission]) {
+                console.log(`[PERM] ${req.method} ${req.originalUrl} - Permission ${permission} GRANTED for user ${req.user.userId}`);
                 return next();
             }
 
+            console.log(`[PERM] ${req.method} ${req.originalUrl} - Permission ${permission} DENIED for user ${req.user.userId}`);
             return res.status(403).json({
                 error: 'Permission denied',
                 required: permission
             });
         } catch (error) {
-            console.error('Check permission error:', error);
+            console.error('[PERM] Error in checkPermission middleware:', error);
             return res.status(500).json({ error: 'Internal server error' });
         }
     };

@@ -35,6 +35,7 @@ interface LeadAssignmentModalProps {
     leadName?: string;
     currentResponsibleId?: string;
     onAssigned?: () => void;
+    newStatus?: string;
 }
 
 export function LeadAssignmentModal({
@@ -44,7 +45,8 @@ export function LeadAssignmentModal({
     leadIds,
     leadName,
     currentResponsibleId,
-    onAssigned
+    onAssigned,
+    newStatus
 }: LeadAssignmentModalProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedSellerId, setSelectedSellerId] = useState<string | null>(null);
@@ -83,10 +85,14 @@ export function LeadAssignmentModal({
 
         setAssigning(true);
         try {
-            // Update each lead with the new responsibleId
-            await Promise.all(ids.map(id =>
-                api.put(`/companies/${id}`, { responsibleId: selectedSellerId })
-            ));
+            // Update each lead with the new responsibleId and optionally the new status
+            await Promise.all(ids.map(id => {
+                const payload: any = { responsibleId: selectedSellerId };
+                if (newStatus) {
+                    payload.status = newStatus;
+                }
+                return api.put(`/companies/${id}`, payload);
+            }));
 
             toast.success(isBulk
                 ? `${ids.length} leads atribuídos com sucesso!`

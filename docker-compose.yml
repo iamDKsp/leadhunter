@@ -12,6 +12,34 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lead_hunter_backend
+    env_file:
+      - ./backend/.env
+    environment:
+      # Override the DATABASE_URL to use the docker internal network
+      - DATABASE_URL=postgresql://user:password@postgres:5432/lead_hunter?schema=public
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./lead-scout
+      dockerfile: Dockerfile
+    container_name: lead_hunter_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
 
 volumes:
   postgres_data:

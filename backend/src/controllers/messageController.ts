@@ -19,16 +19,19 @@ export const getMessages = async (req: Request, res: Response) => {
             cleanId,
             `${cleanId}@s.whatsapp.net`,
             `${cleanId}@c.us`,
+            `${cleanId}@lid`,
         ];
 
         if (cleanId.startsWith('55') && cleanId.length > 11) {
             const noPrefix = cleanId.substring(2);
             possibleChatIds.push(`${noPrefix}@s.whatsapp.net`);
             possibleChatIds.push(`${noPrefix}@c.us`);
+            possibleChatIds.push(`${noPrefix}@lid`);
         } else if (cleanId.length <= 11) {
             const withPrefix = `55${cleanId}`;
             possibleChatIds.push(`${withPrefix}@s.whatsapp.net`);
             possibleChatIds.push(`${withPrefix}@c.us`);
+            possibleChatIds.push(`${withPrefix}@lid`);
         }
 
         // Check if user owns this chat
