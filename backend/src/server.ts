@@ -30,13 +30,29 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',')
     : ['http://localhost:5173', 'http://localhost:3000'];
 
+const corsOptions = {
+    origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+        if (!origin) return callback(null, true);
+
+        // Allowed arrays
+        if (ALLOWED_ORIGINS.indexOf(origin) !== -1) {
+            return callback(null, true);
+        }
+
+        // Allowed regex (vercel subdomains)
+        if (/\.vercel\.app$/.test(origin)) {
+            return callback(null, true);
+        }
+
+        callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+};
+
 app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
-app.use(cors({
-    origin: ALLOWED_ORIGINS,
-    credentials: true
-}));
+app.use(cors(corsOptions));
 app.use(compression());
 app.use(express.json({ limit: '50mb' }));
 
@@ -125,7 +141,7 @@ app.use('/chat', chatRoutes);
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
     cors: {
-        origin: ALLOWED_ORIGINS,
+        origin: corsOptions.origin as any,
         methods: ["GET", "POST"],
         credentials: true
     }
