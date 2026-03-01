@@ -443,6 +443,23 @@ export const sendMessage = async (to: string, message: string, userId: string = 
             jid = `${jid}@s.whatsapp.net`;
         }
 
+        // --- VALIDATE: Check if number exists on WhatsApp before sending ---
+        try {
+            const [result] = await sock.onWhatsApp(jid);
+            if (!result?.exists) {
+                throw new Error(`Número não está registrado no WhatsApp: ${jid}`);
+            }
+            // Use the JID returned by WhatsApp (handles 9-digit vs 8-digit Brazilian numbers)
+            jid = result.jid;
+        } catch (validationError: any) {
+            // Re-throw descriptive errors
+            if (validationError.message?.includes('não está registrado')) {
+                throw validationError;
+            }
+            // Let network/API errors pass through (don't block sending on lookup failure)
+            console.warn(`[sendMessage] onWhatsApp check failed for ${jid}, proceeding:`, validationError.message);
+        }
+
         const sentMsg = await sock.sendMessage(jid, { text: message });
 
         // Save to DB

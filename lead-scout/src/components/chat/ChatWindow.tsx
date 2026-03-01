@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Paperclip, Smile, MoreVertical, Phone, Video, X, File, PanelRightOpen, PanelRightClose } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { MessageBubble, Message } from "./MessageBubble";
 import { QuickTemplates } from "./QuickTemplates";
 import { Conversation } from "./ConversationItem";
@@ -36,6 +35,15 @@ export const ChatWindow = ({
     const [inputValue, setInputValue] = useState("");
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    // Auto-resize textarea as user types
+    const adjustTextareaHeight = () => {
+        const el = textareaRef.current;
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = Math.min(el.scrollHeight, 150) + 'px';
+    };
 
     // Media States
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -121,8 +129,12 @@ export const ChatWindow = ({
 
     const handleSend = () => {
         if (inputValue.trim()) {
-            onSendMessage(inputValue.trim());
+            onSendMessage(inputValue);
             setInputValue("");
+            // Reset textarea height after send
+            if (textareaRef.current) {
+                textareaRef.current.style.height = 'auto';
+            }
         }
     };
 
@@ -157,11 +169,12 @@ export const ChatWindow = ({
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             handleSend();
         }
+        // Shift+Enter = new line (default behavior, no need to override)
     };
 
     const handleTemplateSelect = (template: string) => {
@@ -294,12 +307,18 @@ export const ChatWindow = ({
                         <Smile className="h-5 w-5" />
                     </Button>
 
-                    <Input
+                    <textarea
+                        ref={textareaRef}
                         value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
+                        onChange={(e) => {
+                            setInputValue(e.target.value);
+                            adjustTextareaHeight();
+                        }}
                         onKeyDown={handleKeyDown}
-                        placeholder="Digite sua mensagem (Ctrl+V para colar imagem)..."
-                        className="flex-1 bg-input border-border focus:border-primary"
+                        placeholder="Digite sua mensagem (Shift+Enter para nova linha)..."
+                        rows={1}
+                        className="flex-1 bg-input border border-border focus:border-primary focus:outline-none rounded-md px-3 py-2 text-sm resize-none overflow-y-auto text-foreground placeholder:text-muted-foreground"
+                        style={{ minHeight: '40px', maxHeight: '150px' }}
                     />
 
                     <Button

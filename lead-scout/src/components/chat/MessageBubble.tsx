@@ -1,12 +1,62 @@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { Check, CheckCheck, FileText, Play, Pause, AlertCircle, Mic, Download } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
-import { Slider } from "@/components/ui/slider"; // Assuming Shadcn slider exists or I'll use standard input range if not
-// Actually, standard input range is easier to style without extra deps if Slider isn't imported.
-// I'll stick to standard range for stability or check if Slider is available. 
-// Given the environment, standard range is safer.
+import { Check, CheckCheck, FileText, Play, Pause, Download } from "lucide-react";
+import { useState, useRef, useEffect, Fragment } from "react";
+
+// --- WhatsApp Markdown Parser ---
+const parseWhatsAppMarkdown = (text: string): React.ReactNode => {
+    // Split by newlines first to preserve line breaks
+    const lines = text.split('\n');
+
+    return lines.map((line, lineIndex) => {
+        // Parse inline formatting within each line
+        const segments = parseInlineFormatting(line);
+        return (
+            <Fragment key={lineIndex}>
+                {segments}
+                {lineIndex < lines.length - 1 && <br />}
+            </Fragment>
+        );
+    });
+};
+
+const parseInlineFormatting = (text: string): React.ReactNode => {
+    // Regex for WhatsApp formatting: *bold*, _italic_, ~strikethrough~, `mono`
+    const pattern = /(\*[^*\n]+\*|_[^_\n]+_|~[^~\n]+~|`[^`\n]+`)/g;
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = pattern.exec(text)) !== null) {
+        // Add text before match
+        if (match.index > lastIndex) {
+            parts.push(text.slice(lastIndex, match.index));
+        }
+
+        const token = match[0];
+        const inner = token.slice(1, -1); // Strip surrounding markers
+
+        if (token.startsWith('*')) {
+            parts.push(<strong key={match.index}>{inner}</strong>);
+        } else if (token.startsWith('_')) {
+            parts.push(<em key={match.index}>{inner}</em>);
+        } else if (token.startsWith('~')) {
+            parts.push(<s key={match.index}>{inner}</s>);
+        } else if (token.startsWith('`')) {
+            parts.push(<code key={match.index} className="bg-black/20 rounded px-1 font-mono text-xs">{inner}</code>);
+        }
+
+        lastIndex = match.index + token.length;
+    }
+
+    // Add remaining text
+    if (lastIndex < text.length) {
+        parts.push(text.slice(lastIndex));
+    }
+
+    return parts.length > 0 ? parts : text;
+};
 
 export interface Message {
     id: string;
@@ -229,7 +279,11 @@ export const MessageBubble = ({ message }: MessageBubbleProps) => {
             case 'text':
             case 'template':
             default:
-                return <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">{message.content}</p>;
+                return (
+                    <p className="text-sm leading-relaxed break-words">
+                        {parseWhatsAppMarkdown(message.content)}
+                    </p>
+                );
         }
     };
 
