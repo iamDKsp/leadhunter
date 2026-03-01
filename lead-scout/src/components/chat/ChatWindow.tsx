@@ -41,7 +41,8 @@ export const ChatWindow = ({
     const adjustTextareaHeight = () => {
         const el = textareaRef.current;
         if (!el) return;
-        el.style.height = 'auto';
+        // Set to 0px first to force scrollHeight to recalculate correctly
+        el.style.height = '0px';
         el.style.height = Math.min(el.scrollHeight, 150) + 'px';
     };
 

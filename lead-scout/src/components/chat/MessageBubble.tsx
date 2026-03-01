@@ -24,35 +24,41 @@ const parseWhatsAppMarkdown = (text: string): React.ReactNode => {
 };
 
 const parseInlineFormatting = (text: string): React.ReactNode => {
-    // Regex for WhatsApp formatting: *bold*, _italic_, ~strikethrough~, `mono`
-    const pattern = /(\*[^*\n]+\*|_[^_\n]+_|~[^~\n]+~|`[^`\n]+`)/g;
+    // Order matters: **double** must come before *single* to avoid greedy mismatch
+    const pattern = /(\*\*[^*\n]+\*\*|\*[^*\n]+\*|_[^_\n]+_|~[^~\n]+~|`[^`\n]+`)/g;
     const parts: React.ReactNode[] = [];
     let lastIndex = 0;
     let match: RegExpExecArray | null;
 
     while ((match = pattern.exec(text)) !== null) {
-        // Add text before match
         if (match.index > lastIndex) {
             parts.push(text.slice(lastIndex, match.index));
         }
 
         const token = match[0];
-        const inner = token.slice(1, -1); // Strip surrounding markers
 
-        if (token.startsWith('*')) {
+        if (token.startsWith('**')) {
+            // **double asterisk bold** — strip 2 chars from each end
+            const inner = token.slice(2, -2);
+            parts.push(<strong key={match.index}>{inner}</strong>);
+        } else if (token.startsWith('*')) {
+            // *single asterisk bold* (WhatsApp native)
+            const inner = token.slice(1, -1);
             parts.push(<strong key={match.index}>{inner}</strong>);
         } else if (token.startsWith('_')) {
+            const inner = token.slice(1, -1);
             parts.push(<em key={match.index}>{inner}</em>);
         } else if (token.startsWith('~')) {
+            const inner = token.slice(1, -1);
             parts.push(<s key={match.index}>{inner}</s>);
         } else if (token.startsWith('`')) {
+            const inner = token.slice(1, -1);
             parts.push(<code key={match.index} className="bg-black/20 rounded px-1 font-mono text-xs">{inner}</code>);
         }
 
         lastIndex = match.index + token.length;
     }
 
-    // Add remaining text
     if (lastIndex < text.length) {
         parts.push(text.slice(lastIndex));
     }
