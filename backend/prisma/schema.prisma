@@ -130,8 +130,23 @@ model User {
   goals               Goal[]
   activityLogs        ActivityLog[]
   sessions            UserSession[]
+  firstContactTemplates FirstContactTemplate[]
 
   @@map("users")
+}
+
+// ==================== FIRST CONTACT TEMPLATES ====================
+
+model FirstContactTemplate {
+  id        String   @id @default(uuid())
+  title     String
+  body      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("first_contact_templates")
 }
 
 // ==================== LEADS ====================

@@ -20,6 +20,7 @@ import monitoringRoutes from './routes/monitoringRoutes';
 import stagesRoutes from './routes/stageRoutes';
 import chatRoutes from './routes/chatRoutes';
 import whatsappRoutes from './routes/whatsappRoutes';
+import templateRoutes from './routes/templateRoutes';
 
 dotenv.config();
 
@@ -137,6 +138,7 @@ app.use('/personal', personalRoutes);
 app.use('/monitoring', monitoringRoutes);
 app.use('/stages', stagesRoutes);
 app.use('/chat', chatRoutes);
+app.use('/templates', templateRoutes);
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {

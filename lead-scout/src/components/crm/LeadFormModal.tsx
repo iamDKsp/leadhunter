@@ -8,10 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Lead, Stage, COMPANY_TYPES, COMPANY_SIZES, ACTIVITY_BRANCHES, CompanyType, CompanySize, ActivityBranch } from '@/types/lead';
-import { X, Plus, Building2, ThumbsUp, ThumbsDown, CheckCircle2, Save, MapPin, Trash2, Pencil, Calendar, Clock, CalendarCheck } from 'lucide-react';
+import { X, Plus, Building2, ThumbsUp, ThumbsDown, CheckCircle2, Save, MapPin, Trash2, Pencil, Calendar, Clock, CalendarCheck, MessageSquarePlus } from 'lucide-react';
 import api from '@/services/api';
 import CelebrationModal from './CelebrationModal';
 import MeetingModal from './MeetingModal';
+import { FirstContactTemplateModal } from './FirstContactTemplateModal';
 
 // Preset tag colors
 const TAG_COLORS = [
@@ -97,6 +98,9 @@ const LeadFormModal = ({ open, onClose, onSave, lead, stages }: LeadFormModalPro
     // Meeting
     const [showMeeting, setShowMeeting] = useState(false);
     const [meetingName, setMeetingName] = useState('');
+
+    // First Contact Template
+    const [showFirstContact, setShowFirstContact] = useState(false);
 
     // Auto-save debounce ref
     const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -439,22 +443,31 @@ const LeadFormModal = ({ open, onClose, onSave, lead, stages }: LeadFormModalPro
                                     </div>
                                 </div>
                                 {/* Status Buttons */}
-                                <div className="flex gap-2 flex-shrink-0">
-                                    <Button type="button" variant="outline" size="sm"
-                                        className="bg-red-500/10 text-red-500 hover:bg-red-500/20 border-red-500/20"
-                                        onClick={() => handleStatusChange('lost')}>
-                                        <ThumbsDown className="w-4 h-4 mr-1" /> Perdido
-                                    </Button>
-                                    <Button type="button" variant="outline" size="sm"
-                                        className="bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 border-purple-500/20"
-                                        onClick={handleMeetingSchedule}>
-                                        <CalendarCheck className="w-4 h-4 mr-1" /> Reunião
-                                    </Button>
-                                    <Button type="button" variant="outline" size="sm"
-                                        className="bg-green-500/10 text-green-500 hover:bg-green-500/20 border-green-500/20"
-                                        onClick={() => handleStatusChange('won')}>
-                                        <ThumbsUp className="w-4 h-4 mr-1" /> Ganho
-                                    </Button>
+                                <div className="flex flex-col gap-2 flex-shrink-0 items-end">
+                                    <div className="flex gap-2">
+                                        <Button type="button" variant="outline" size="sm"
+                                            className="bg-red-500/10 text-red-500 hover:bg-red-500/20 border-red-500/20"
+                                            onClick={() => handleStatusChange('lost')}>
+                                            <ThumbsDown className="w-4 h-4 mr-1" /> Perdido
+                                        </Button>
+                                        <Button type="button" variant="outline" size="sm"
+                                            className="bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 border-purple-500/20"
+                                            onClick={handleMeetingSchedule}>
+                                            <CalendarCheck className="w-4 h-4 mr-1" /> Reunião
+                                        </Button>
+                                        <Button type="button" variant="outline" size="sm"
+                                            className="bg-green-500/10 text-green-500 hover:bg-green-500/20 border-green-500/20"
+                                            onClick={() => handleStatusChange('won')}>
+                                            <ThumbsUp className="w-4 h-4 mr-1" /> Ganho
+                                        </Button>
+                                    </div>
+                                    {lead?.phone && (
+                                        <Button type="button" variant="outline" size="sm"
+                                            className="w-full bg-primary/10 text-primary hover:bg-primary/20 border-primary/20"
+                                            onClick={() => setShowFirstContact(true)}>
+                                            <MessageSquarePlus className="w-4 h-4 mr-1" /> Primeiro Contato
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -811,6 +824,19 @@ const LeadFormModal = ({ open, onClose, onSave, lead, stages }: LeadFormModalPro
                 onClose={handleMeetingClose}
                 leadName={meetingName}
             />
+
+            {/* First Contact Template Modal */}
+            {lead && (
+                <FirstContactTemplateModal
+                    open={showFirstContact}
+                    onClose={() => setShowFirstContact(false)}
+                    lead={{
+                        id: lead.id,
+                        name: lead.name,
+                        phone: formData.phone || lead.phone || '',
+                    }}
+                />
+            )}
         </>
     );
 };
