@@ -443,21 +443,19 @@ export const sendMessage = async (to: string, message: string, userId: string = 
             jid = `${jid}@s.whatsapp.net`;
         }
 
-        // --- VALIDATE: Check if number exists on WhatsApp before sending ---
+        // --- BEST-EFFORT JID RESOLUTION via onWhatsApp() ---
+        // This resolves the correct number format (e.g. 8 vs 9 digits in Brazil).
+        // It does NOT block sending — cold first-contact messages must always go through.
         try {
             const [result] = await sock.onWhatsApp(jid);
-            if (!result?.exists) {
-                throw new Error(`Número não está registrado no WhatsApp: ${jid}`);
+            if (result?.jid) {
+                // Use the verified JID returned by WhatsApp for correct formatting
+                jid = result.jid;
+                console.log(`[sendMessage] JID resolved via onWhatsApp: ${jid}`);
             }
-            // Use the JID returned by WhatsApp (handles 9-digit vs 8-digit Brazilian numbers)
-            jid = result.jid;
-        } catch (validationError: any) {
-            // Re-throw descriptive errors
-            if (validationError.message?.includes('não está registrado')) {
-                throw validationError;
-            }
-            // Let network/API errors pass through (don't block sending on lookup failure)
-            console.warn(`[sendMessage] onWhatsApp check failed for ${jid}, proceeding:`, validationError.message);
+        } catch (lookupErr: any) {
+            // Lookup failed (network, timeout, etc.) — proceed with the formatted JID anyway
+            console.warn(`[sendMessage] onWhatsApp lookup failed for ${jid}, proceeding anyway:`, lookupErr.message);
         }
 
         const sentMsg = await sock.sendMessage(jid, { text: message });

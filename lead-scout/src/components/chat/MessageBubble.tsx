@@ -6,8 +6,10 @@ import { useState, useRef, useEffect, Fragment } from "react";
 
 // --- WhatsApp Markdown Parser ---
 const parseWhatsAppMarkdown = (text: string): React.ReactNode => {
-    // Split by newlines first to preserve line breaks
-    const lines = text.split('\n');
+    // Normalize all line ending variants (\r\n or \r) to \n
+    const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const lines = normalized.split('\n');
+
 
     return lines.map((line, lineIndex) => {
         // Parse inline formatting within each line

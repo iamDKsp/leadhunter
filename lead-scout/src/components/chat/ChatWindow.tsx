@@ -45,6 +45,12 @@ export const ChatWindow = ({
         el.style.height = Math.min(el.scrollHeight, 150) + 'px';
     };
 
+    // Resize whenever inputValue changes (covers template insertion too)
+    useEffect(() => {
+        adjustTextareaHeight();
+    }, [inputValue]);
+
+
     // Media States
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
