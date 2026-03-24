@@ -10,9 +10,10 @@ interface KanbanBoardProps {
     onViewLead: (lead: Lead) => void;
     onAssignLead?: (lead: Lead) => void;
     onAddStage: (stageId: string) => void;
+    onLeadStageAdvance?: (leadId: string, newStageId: string) => void;
 }
 
-const KanbanBoard = ({ leads, stages, onLeadMove, onEditStage, onViewLead, onAssignLead, onAddStage }: KanbanBoardProps) => {
+const KanbanBoard = ({ leads, stages, onLeadMove, onEditStage, onViewLead, onAssignLead, onAddStage, onLeadStageAdvance }: KanbanBoardProps) => {
     const handleDragEnd = (result: DropResult) => {
         const { destination, source, draggableId } = result;
 
@@ -37,11 +38,13 @@ const KanbanBoard = ({ leads, stages, onLeadMove, onEditStage, onViewLead, onAss
                     <KanbanColumn
                         key={stage.id}
                         stage={stage}
+                        stages={stages}
                         leads={leads.filter((lead) => (lead.stageId || 'prospeccao') === stage.id)}
                         onEditStage={onEditStage}
                         onViewLead={onViewLead}
                         onAssignLead={onAssignLead}
                         onAddStage={onAddStage}
+                        onLeadStageAdvance={onLeadStageAdvance}
                     />
                 ))}
             </div>

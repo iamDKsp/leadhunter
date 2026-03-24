@@ -347,6 +347,7 @@ const LeadsCRM = ({ user }: LeadsCRMProps) => {
                         onViewLead={handleViewLead}
                         onAssignLead={handleAssignLead}
                         onAddStage={handleAddStage}
+                        onLeadStageAdvance={(leadId, newStageId) => updateLead(leadId, { stageId: newStageId })}
                     />
                 ) : (
                     <div className="overflow-auto h-full">

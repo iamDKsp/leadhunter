@@ -17,12 +17,28 @@ import {
 } from 'lucide-react';
 import api from '@/services/api';
 import { toast } from 'sonner';
+import { Stage } from '@/types/lead';
 
 interface Template {
     id: string;
     title: string;
     body: string;
 }
+
+const LS_KEY = 'selectedFirstContactTemplate';
+
+export const getSelectedTemplate = (): Template | null => {
+    try {
+        const raw = localStorage.getItem(LS_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        return null;
+    }
+};
+
+const saveSelectedTemplate = (t: Template) => {
+    localStorage.setItem(LS_KEY, JSON.stringify(t));
+};
 
 interface FirstContactTemplateModalProps {
     open: boolean;
@@ -31,13 +47,19 @@ interface FirstContactTemplateModalProps {
         id: string;
         name: string;
         phone: string;
+        stageId?: string;
     };
+    stages?: Stage[];
+    /** Called after a successful send to update the lead's stage in the parent */
+    onLeadStageAdvance?: (leadId: string, newStageId: string) => void;
 }
 
 export const FirstContactTemplateModal = ({
     open,
     onClose,
     lead,
+    stages = [],
+    onLeadStageAdvance,
 }: FirstContactTemplateModalProps) => {
     const navigate = useNavigate();
 
@@ -53,9 +75,11 @@ export const FirstContactTemplateModal = ({
     useEffect(() => {
         if (open) {
             fetchTemplates();
-            setSelectedId(null);
             setIsCreating(false);
             setEditingId(null);
+            // Restore previously selected template from localStorage
+            const saved = getSelectedTemplate();
+            setSelectedId(saved?.id ?? null);
         }
     }, [open]);
 
@@ -71,16 +95,24 @@ export const FirstContactTemplateModal = ({
         }
     };
 
+    const handleSelectTemplate = (template: Template) => {
+        const newId = selectedId === template.id ? null : template.id;
+        setSelectedId(newId);
+        if (newId) saveSelectedTemplate(template);
+    };
+
     const handleCreate = async () => {
         if (!formTitle.trim() || !formBody.trim()) return;
         try {
             const res = await api.post('/templates', { title: formTitle, body: formBody });
-            setTemplates(prev => [...prev, res.data]);
-            setSelectedId(res.data.id);
+            const newTemplate: Template = res.data;
+            setTemplates(prev => [...prev, newTemplate]);
+            setSelectedId(newTemplate.id);
+            saveSelectedTemplate(newTemplate);
             setIsCreating(false);
             setFormTitle('');
             setFormBody('');
-            toast.success('Template criado!');
+            toast.success('Template criado e selecionado!');
         } catch {
             toast.error('Erro ao criar template');
         }
@@ -90,7 +122,9 @@ export const FirstContactTemplateModal = ({
         if (!formTitle.trim() || !formBody.trim()) return;
         try {
             const res = await api.patch(`/templates/${id}`, { title: formTitle, body: formBody });
-            setTemplates(prev => prev.map(t => (t.id === id ? res.data : t)));
+            const updated: Template = res.data;
+            setTemplates(prev => prev.map(t => (t.id === id ? updated : t)));
+            if (selectedId === id) saveSelectedTemplate(updated);
             setEditingId(null);
             setFormTitle('');
             setFormBody('');
@@ -104,7 +138,10 @@ export const FirstContactTemplateModal = ({
         try {
             await api.delete(`/templates/${id}`);
             setTemplates(prev => prev.filter(t => t.id !== id));
-            if (selectedId === id) setSelectedId(null);
+            if (selectedId === id) {
+                setSelectedId(null);
+                localStorage.removeItem(LS_KEY);
+            }
             toast.success('Template removido');
         } catch {
             toast.error('Erro ao remover template');
@@ -125,13 +162,24 @@ export const FirstContactTemplateModal = ({
         setFormBody('');
     };
 
+    // Determine if lead needs stage advancement
+    const getNextStageId = (): string | null => {
+        if (!stages.length || !lead.stageId) return null;
+        const sorted = [...stages].sort((a, b) => a.order - b.order);
+        const currentIndex = sorted.findIndex(s => s.id === lead.stageId);
+        // Only advance if on the FIRST stage
+        if (currentIndex === 0 && sorted[1]) {
+            return sorted[1].id;
+        }
+        return null;
+    };
+
     const handleSend = async () => {
         const selected = templates.find(t => t.id === selectedId);
         if (!selected || !lead.phone) return;
 
         setIsSending(true);
         try {
-            // 1. Clean phone and build chatId
             const cleanPhone = lead.phone.replace(/\D/g, '');
             let fullPhone = cleanPhone;
             if (cleanPhone.length >= 10 && cleanPhone.length <= 11) {
@@ -139,22 +187,23 @@ export const FirstContactTemplateModal = ({
             }
             const chatId = `${fullPhone}@s.whatsapp.net`;
 
-            // 2. Create chat ownership record
-            await api.post('/chat/create', {
-                chatId,
-                companyId: lead.id,
-            });
+            // 1. Create chat ownership record
+            await api.post('/chat/create', { chatId, companyId: lead.id });
 
-            // 3. Send the WhatsApp message
-            await api.post('/whatsapp/send', {
-                to: chatId,
-                message: selected.body,
-            });
+            // 2. Send the WhatsApp message
+            await api.post('/whatsapp/send', { to: chatId, message: selected.body });
 
-            toast.success('Mensagem enviada! Abrindo conversa...');
+            // 3. Auto-advance stage if lead is in the first stage
+            const nextStageId = getNextStageId();
+            if (nextStageId) {
+                await api.patch(`/companies/${lead.id}`, { stageId: nextStageId });
+                onLeadStageAdvance?.(lead.id, nextStageId);
+                toast.success('Mensagem enviada! Lead avançado para próxima etapa.');
+            } else {
+                toast.success('Mensagem enviada! Abrindo conversa...');
+            }
+
             onClose();
-
-            // 4. Navigate to Conversas with this chat open
             navigate(
                 `/conversas?chatId=${encodeURIComponent(chatId)}&name=${encodeURIComponent(lead.name)}&phone=${encodeURIComponent(lead.phone)}`
             );
@@ -201,22 +250,13 @@ export const FirstContactTemplateModal = ({
                         </div>
 
                         {isLoading ? (
-                            <p className="text-xs text-muted-foreground text-center py-4">
-                                Carregando...
-                            </p>
+                            <p className="text-xs text-muted-foreground text-center py-4">Carregando...</p>
                         ) : templates.length === 0 && !isCreating ? (
                             <div className="border-2 border-dashed border-border/40 rounded-lg p-6 text-center">
                                 <MessageSquarePlus className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
                                 <p className="text-sm text-muted-foreground">Nenhum template ainda.</p>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    className="mt-3"
-                                    onClick={handleStartCreate}
-                                >
-                                    <Plus className="w-3 h-3 mr-1" />
-                                    Criar primeiro template
+                                <Button type="button" variant="outline" size="sm" className="mt-3" onClick={handleStartCreate}>
+                                    <Plus className="w-3 h-3 mr-1" /> Criar primeiro template
                                 </Button>
                             </div>
                         ) : (
@@ -224,7 +264,6 @@ export const FirstContactTemplateModal = ({
                                 {templates.map(template => (
                                     <div key={template.id}>
                                         {editingId === template.id ? (
-                                            /* ── Edit inline ── */
                                             <div className="p-3 rounded-lg border border-primary/40 bg-primary/5 space-y-2">
                                                 <Input
                                                     value={formTitle}
@@ -239,36 +278,20 @@ export const FirstContactTemplateModal = ({
                                                     className="min-h-[80px] text-sm bg-background/50 resize-none"
                                                 />
                                                 <div className="flex gap-2 justify-end">
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-7 text-xs"
-                                                        onClick={() => setEditingId(null)}
-                                                    >
+                                                    <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setEditingId(null)}>
                                                         Cancelar
                                                     </Button>
-                                                    <Button
-                                                        type="button"
-                                                        size="sm"
-                                                        className="h-7 text-xs"
-                                                        onClick={() => handleUpdate(template.id)}
-                                                    >
+                                                    <Button type="button" size="sm" className="h-7 text-xs" onClick={() => handleUpdate(template.id)}>
                                                         Salvar
                                                     </Button>
                                                 </div>
                                             </div>
                                         ) : (
-                                            /* ── Template card ── */
                                             <div
-                                                onClick={() =>
-                                                    setSelectedId(
-                                                        selectedId === template.id ? null : template.id
-                                                    )
-                                                }
+                                                onClick={() => handleSelectTemplate(template)}
                                                 className={`p-3 rounded-lg border cursor-pointer transition-all group ${selectedId === template.id
-                                                    ? 'border-primary bg-primary/10 shadow-sm shadow-primary/20'
-                                                    : 'border-border/40 bg-background/30 hover:border-primary/40 hover:bg-primary/5'
+                                                        ? 'border-primary bg-primary/10 shadow-sm shadow-primary/20'
+                                                        : 'border-border/40 bg-background/30 hover:border-primary/40 hover:bg-primary/5'
                                                     }`}
                                             >
                                                 <div className="flex items-start justify-between gap-2">
@@ -287,26 +310,14 @@ export const FirstContactTemplateModal = ({
                                                     </div>
                                                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                                                         <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-6 w-6"
-                                                            onClick={e => {
-                                                                e.stopPropagation();
-                                                                handleStartEdit(template);
-                                                            }}
+                                                            type="button" variant="ghost" size="icon" className="h-6 w-6"
+                                                            onClick={e => { e.stopPropagation(); handleStartEdit(template); }}
                                                         >
                                                             <Pencil className="w-3 h-3" />
                                                         </Button>
                                                         <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-6 w-6 text-destructive hover:text-destructive"
-                                                            onClick={e => {
-                                                                e.stopPropagation();
-                                                                handleDelete(template.id);
-                                                            }}
+                                                            type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive"
+                                                            onClick={e => { e.stopPropagation(); handleDelete(template.id); }}
                                                         >
                                                             <Trash2 className="w-3 h-3" />
                                                         </Button>
@@ -320,18 +331,12 @@ export const FirstContactTemplateModal = ({
                         )}
                     </div>
 
-                    {/* Create new template form */}
+                    {/* Create form */}
                     {isCreating && (
                         <div className="p-3 rounded-lg border border-primary/40 bg-primary/5 space-y-2">
                             <div className="flex items-center justify-between">
                                 <Label className="text-xs font-medium">Nova Mensagem de Primeiro Contato</Label>
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6"
-                                    onClick={() => setIsCreating(false)}
-                                >
+                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsCreating(false)}>
                                     <X className="w-3 h-3" />
                                 </Button>
                             </div>
@@ -349,19 +354,11 @@ export const FirstContactTemplateModal = ({
                                 className="min-h-[100px] text-sm bg-background/50 resize-none"
                             />
                             <div className="flex gap-2 justify-end">
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 text-xs"
-                                    onClick={() => setIsCreating(false)}
-                                >
+                                <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setIsCreating(false)}>
                                     Cancelar
                                 </Button>
                                 <Button
-                                    type="button"
-                                    size="sm"
-                                    className="h-7 text-xs"
+                                    type="button" size="sm" className="h-7 text-xs"
                                     onClick={handleCreate}
                                     disabled={!formTitle.trim() || !formBody.trim()}
                                 >
@@ -371,20 +368,17 @@ export const FirstContactTemplateModal = ({
                         </div>
                     )}
 
-                    {/* Preview pane */}
+                    {/* Preview */}
                     {selectedTemplate && (
                         <div className="rounded-lg border border-border/30 bg-background/30 p-3 space-y-1.5">
-                            <Label className="text-xs text-muted-foreground uppercase tracking-wide">
-                                Pré-visualização
-                            </Label>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-wide">Pré-visualização</Label>
                             <div className="bg-primary/10 border border-primary/20 rounded-lg px-3 py-2">
                                 <p className="text-sm whitespace-pre-wrap text-foreground leading-relaxed">
                                     {selectedTemplate.body}
                                 </p>
                             </div>
                             <p className="text-[11px] text-muted-foreground">
-                                Será enviado para:{' '}
-                                <span className="font-medium text-foreground">{lead.phone}</span>
+                                Será enviado para: <span className="font-medium text-foreground">{lead.phone}</span>
                             </p>
                         </div>
                     )}

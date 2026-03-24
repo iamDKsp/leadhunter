@@ -1,21 +1,25 @@
 import { useState } from 'react';
-import { Lead } from '@/types/lead';
-import { MapPin, Phone, Mail, Eye, UserPlus, User, Building2, X, MessageCircle } from 'lucide-react';
+import { Lead, Stage } from '@/types/lead';
+import { MapPin, Phone, Mail, Eye, UserPlus, User, Building2, X, MessageCircle, Zap } from 'lucide-react';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
 import api from '@/services/api';
 import { toast } from 'sonner';
+import { getSelectedTemplate } from './FirstContactTemplateModal';
 
 interface KanbanCardProps {
     lead: Lead;
     isDragging: boolean;
     onView: () => void;
     onAssign?: () => void;
+    stages?: Stage[];
+    onLeadStageAdvance?: (leadId: string, newStageId: string) => void;
 }
 
-const KanbanCard = ({ lead, isDragging, onView, onAssign }: KanbanCardProps) => {
+const KanbanCard = ({ lead, isDragging, onView, onAssign, stages = [], onLeadStageAdvance }: KanbanCardProps) => {
     const [isImageOpen, setIsImageOpen] = useState(false);
     const [isChatLoading, setIsChatLoading] = useState(false);
+    const [isQuickSending, setIsQuickSending] = useState(false);
     const navigate = useNavigate();
 
     const handleChatClick = async (e: React.MouseEvent) => {
@@ -25,7 +29,6 @@ const KanbanCard = ({ lead, isDragging, onView, onAssign }: KanbanCardProps) => 
         setIsChatLoading(true);
 
         try {
-            // Clean phone and format chatId
             const cleanPhone = lead.phone.replace(/\D/g, '');
             let fullPhone = cleanPhone;
             if (cleanPhone.length >= 10 && cleanPhone.length <= 11) {
@@ -34,7 +37,6 @@ const KanbanCard = ({ lead, isDragging, onView, onAssign }: KanbanCardProps) => 
 
             const chatId = `${fullPhone}@s.whatsapp.net`;
 
-            // Create UserChat ownership record BEFORE navigating
             await api.post('/chat/create', {
                 chatId,
                 companyId: lead.id
@@ -49,13 +51,61 @@ const KanbanCard = ({ lead, isDragging, onView, onAssign }: KanbanCardProps) => 
         }
     };
 
+    /** Quick-send: uses the globally selected template from localStorage */
+    const handleQuickSend = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!lead.phone || isQuickSending) return;
+
+        const template = getSelectedTemplate();
+        if (!template) {
+            toast.warning('Nenhum template selecionado. Abra o lead e escolha um template de Primeiro Contato primeiro.');
+            return;
+        }
+
+        setIsQuickSending(true);
+        try {
+            const cleanPhone = lead.phone.replace(/\D/g, '');
+            let fullPhone = cleanPhone;
+            if (cleanPhone.length >= 10 && cleanPhone.length <= 11) {
+                fullPhone = `55${cleanPhone}`;
+            }
+            const chatId = `${fullPhone}@s.whatsapp.net`;
+
+            // 1. Create chat record
+            await api.post('/chat/create', { chatId, companyId: lead.id });
+
+            // 2. Send message
+            await api.post('/whatsapp/send', { to: chatId, message: template.body });
+
+            // 3. Auto-advance if in first stage
+            if (stages.length >= 2) {
+                const sorted = [...stages].sort((a, b) => a.order - b.order);
+                const currentIndex = sorted.findIndex(s => s.id === (lead.stageId || sorted[0].id));
+                if (currentIndex === 0 && sorted[1]) {
+                    const nextStageId = sorted[1].id;
+                    await api.patch(`/companies/${lead.id}`, { stageId: nextStageId });
+                    onLeadStageAdvance?.(lead.id, nextStageId);
+                    toast.success(`"${template.title}" enviado! Lead avançado para ${sorted[1].name}.`);
+                } else {
+                    toast.success(`"${template.title}" enviado para ${lead.name}!`);
+                }
+            } else {
+                toast.success(`"${template.title}" enviado para ${lead.name}!`);
+            }
+        } catch (err: any) {
+            const msg = err?.response?.data?.error || 'Erro ao enviar mensagem';
+            toast.error(msg);
+        } finally {
+            setIsQuickSending(false);
+        }
+    };
+
     const getProgressColor = (value: number) => {
         if (value >= 80) return 'bg-green-500';
         if (value >= 50) return 'bg-orange-500';
         return 'bg-red-500';
     };
 
-    // Check if lead has a responsible user assigned
     const responsible = (lead as any).responsible;
     const hasResponsible = responsible?.id;
 
@@ -73,17 +123,11 @@ const KanbanCard = ({ lead, isDragging, onView, onAssign }: KanbanCardProps) => 
                     }`}
                 style={
                     lead.status === 'won'
-                        ? {
-                            boxShadow: '0 0 15px rgba(34, 197, 94, 0.35), 0 0 40px rgba(34, 197, 94, 0.1), inset 0 0 20px rgba(34, 197, 94, 0.05)',
-                        }
+                        ? { boxShadow: '0 0 15px rgba(34, 197, 94, 0.35), 0 0 40px rgba(34, 197, 94, 0.1), inset 0 0 20px rgba(34, 197, 94, 0.05)' }
                         : lead.status === 'lost'
-                            ? {
-                                boxShadow: '0 0 15px rgba(239, 68, 68, 0.35), 0 0 40px rgba(239, 68, 68, 0.1), inset 0 0 20px rgba(239, 68, 68, 0.05)',
-                            }
+                            ? { boxShadow: '0 0 15px rgba(239, 68, 68, 0.35), 0 0 40px rgba(239, 68, 68, 0.1), inset 0 0 20px rgba(239, 68, 68, 0.05)' }
                             : lead.status === 'meeting'
-                                ? {
-                                    boxShadow: '0 0 15px rgba(139, 92, 246, 0.35), 0 0 40px rgba(139, 92, 246, 0.1), inset 0 0 20px rgba(139, 92, 246, 0.05)',
-                                }
+                                ? { boxShadow: '0 0 15px rgba(139, 92, 246, 0.35), 0 0 40px rgba(139, 92, 246, 0.1), inset 0 0 20px rgba(139, 92, 246, 0.05)' }
                                 : undefined
                 }
             >
@@ -116,7 +160,6 @@ const KanbanCard = ({ lead, isDragging, onView, onAssign }: KanbanCardProps) => 
                             <h4 className="font-medium text-foreground text-sm truncate pr-1 capitalize">{lead.name}</h4>
                             <div className="flex flex-wrap gap-1">
                                 {Array.isArray((lead as any).tags) && (lead as any).tags.map((tag: string, i: number) => {
-                                    // Support colored tags in "color::TEXT" format
                                     if (tag.includes('::')) {
                                         const [color, text] = tag.split('::', 2);
                                         return (
@@ -138,14 +181,11 @@ const KanbanCard = ({ lead, isDragging, onView, onAssign }: KanbanCardProps) => 
                         </div>
                     </div>
 
-                    {/* Action Buttons - Fixed width to prevent jumping */}
+                    {/* Action Buttons */}
                     <div className="flex items-start gap-1 flex-shrink-0">
                         {onAssign && (
                             <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onAssign();
-                                }}
+                                onClick={(e) => { e.stopPropagation(); onAssign(); }}
                                 className={`w-6 h-6 rounded flex items-center justify-center transition-all ${hasResponsible
                                     ? 'text-primary bg-primary/10 hover:bg-primary/20'
                                     : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
@@ -155,6 +195,20 @@ const KanbanCard = ({ lead, isDragging, onView, onAssign }: KanbanCardProps) => 
                                 {hasResponsible ? <User className="w-3 h-3" /> : <UserPlus className="w-3 h-3" />}
                             </button>
                         )}
+
+                        {/* ⚡ Quick Send */}
+                        <button
+                            onClick={handleQuickSend}
+                            disabled={!lead.phone || isQuickSending}
+                            className={`w-6 h-6 rounded flex items-center justify-center transition-all ${lead.phone
+                                ? 'text-muted-foreground hover:text-yellow-400 hover:bg-yellow-400/10'
+                                : 'text-muted-foreground/30 cursor-not-allowed'}`}
+                            title={lead.phone ? 'Enviar template selecionado' : 'Sem telefone'}
+                        >
+                            <Zap className={`w-3 h-3 ${isQuickSending ? 'animate-pulse text-yellow-400' : ''}`} />
+                        </button>
+
+                        {/* Chat */}
                         <button
                             onClick={handleChatClick}
                             className={`w-6 h-6 rounded flex items-center justify-center transition-all ${lead.phone
@@ -165,11 +219,10 @@ const KanbanCard = ({ lead, isDragging, onView, onAssign }: KanbanCardProps) => 
                         >
                             <MessageCircle className="w-3 h-3" />
                         </button>
+
+                        {/* View */}
                         <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onView();
-                            }}
+                            onClick={(e) => { e.stopPropagation(); onView(); }}
                             className="w-6 h-6 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
                         >
                             <Eye className="w-3 h-3" />

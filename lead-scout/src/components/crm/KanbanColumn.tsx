@@ -6,13 +6,15 @@ import { MoreVertical, Plus } from 'lucide-react';
 interface KanbanColumnProps {
     stage: Stage;
     leads: Lead[];
+    stages: Stage[];
     onEditStage: (stage: Stage) => void;
     onViewLead: (lead: Lead) => void;
     onAssignLead?: (lead: Lead) => void;
     onAddStage: (stageId: string) => void;
+    onLeadStageAdvance?: (leadId: string, newStageId: string) => void;
 }
 
-const KanbanColumn = ({ stage, leads, onEditStage, onViewLead, onAssignLead, onAddStage }: KanbanColumnProps) => {
+const KanbanColumn = ({ stage, leads, stages, onEditStage, onViewLead, onAssignLead, onAddStage, onLeadStageAdvance }: KanbanColumnProps) => {
     return (
         <div className="flex-shrink-0 w-80 bg-card/40 border border-border/30 rounded-xl flex flex-col max-h-full">
             {/* Header */}
@@ -72,6 +74,8 @@ const KanbanColumn = ({ stage, leads, onEditStage, onViewLead, onAssignLead, onA
                                             isDragging={snapshot.isDragging}
                                             onView={() => onViewLead(lead)}
                                             onAssign={onAssignLead ? () => onAssignLead(lead) : undefined}
+                                            stages={stages}
+                                            onLeadStageAdvance={onLeadStageAdvance}
                                         />
                                     </div>
                                 )}

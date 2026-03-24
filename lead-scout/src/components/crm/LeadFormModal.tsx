@@ -830,10 +830,15 @@ const LeadFormModal = ({ open, onClose, onSave, lead, stages }: LeadFormModalPro
                 <FirstContactTemplateModal
                     open={showFirstContact}
                     onClose={() => setShowFirstContact(false)}
+                    stages={stages}
+                    onLeadStageAdvance={(leadId, newStageId) => {
+                        onSave({ ...formData, id: leadId, location: formData.address, googlePlaceId: lead?.googlePlaceId, stageId: newStageId } as any);
+                    }}
                     lead={{
                         id: lead.id,
                         name: lead.name,
                         phone: formData.phone || lead.phone || '',
+                        stageId: formData.stageId || lead.stageId,
                     }}
                 />
             )}
