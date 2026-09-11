@@ -22,7 +22,7 @@ services:
       dockerfile: Dockerfile
     container_name: lead_hunter_frontend
     ports:
-      - "${FRONTEND_PORT:-8085}:80"
+      - "${FRONTEND_PORT:-7080}:80"
     depends_on:
       - backend
     restart: unless-stopped
