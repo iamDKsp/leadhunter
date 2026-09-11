@@ -14,8 +14,6 @@ services:
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
     volumes:
       - backend_data:/app
-    ports:
-      - "3001:3000"
     restart: unless-stopped
 
   frontend:
