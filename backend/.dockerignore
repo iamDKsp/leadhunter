@@ -1,6 +1,8 @@
 node_modules
 dist
-dev.db
 .env
 .git
 .gitignore
+*.log
+debug.log
+baileys_auth_info

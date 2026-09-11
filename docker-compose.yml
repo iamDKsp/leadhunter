@@ -1,19 +1,6 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: lead_hunter_db
-    environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: lead_hunter
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-
   backend:
     build:
       context: ./backend
@@ -21,14 +8,14 @@ services:
     container_name: lead_hunter_backend
     environment:
       - PORT=3000
-      - DATABASE_URL=postgresql://user:password@postgres:5432/lead_hunter?schema=public
+      - DATABASE_URL=file:/app/dev.db
       - JWT_SECRET=${JWT_SECRET:-changeme_in_production_secret_key_12345}
       - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY:-}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
+    volumes:
+      - backend_data:/app
     ports:
       - "3000:3000"
-    depends_on:
-      - postgres
     restart: unless-stopped
 
   frontend:
@@ -43,4 +30,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  postgres_data:
+  backend_data:
