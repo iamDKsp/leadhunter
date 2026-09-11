@@ -35,6 +35,11 @@ const corsOptions = {
     origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
         if (!origin) return callback(null, true);
 
+        // Allow any localhost / 127.0.0.1 port in development
+        if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+            return callback(null, true);
+        }
+
         // Allowed arrays
         if (ALLOWED_ORIGINS.indexOf(origin) !== -1) {
             return callback(null, true);

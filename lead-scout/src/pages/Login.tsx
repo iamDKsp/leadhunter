@@ -30,7 +30,7 @@ const Login = () => {
                 }
             } else if (preference === 'PC') {
                 if (window.location.port === '8081') {
-                    window.location.href = 'http://localhost:8080';
+                    window.location.href = 'http://localhost:5173';
                     return;
                 }
             }
