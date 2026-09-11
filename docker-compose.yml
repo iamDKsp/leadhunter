@@ -15,7 +15,7 @@ services:
     volumes:
       - backend_data:/app
     ports:
-      - "3000:3000"
+      - "3001:3000"
     restart: unless-stopped
 
   frontend:
