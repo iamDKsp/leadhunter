@@ -3,7 +3,7 @@ import MonitoringStats from "@/components/monitoring/MonitoringStats";
 import MonitoringFilters, { StatusFilter } from "@/components/monitoring/MonitoringFilters";
 import UsersTable from "@/components/monitoring/UsersTable";
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:3000');
 
 interface Message {
     id: string;

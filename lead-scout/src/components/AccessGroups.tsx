@@ -152,7 +152,7 @@ export function AccessGroups() {
     const [permissions, setPermissions] = useState<Omit<Permission, 'id'>>(DEFAULT_PERMISSIONS);
     const [userSearchQuery, setUserSearchQuery] = useState('');
 
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:3000');
 
     const getAuthHeaders = () => ({
         'Content-Type': 'application/json',

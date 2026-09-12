@@ -47,7 +47,7 @@ export function Users() {
     const [customTag, setCustomTag] = useState('');
     const [customTagColor, setCustomTagColor] = useState('#000000');
 
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:3000');
 
     const fetchUsers = async () => {
         try {

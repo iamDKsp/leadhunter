@@ -10,7 +10,7 @@ import PerformanceChart from "@/components/personal/PerformanceChart";
 import WeeklyGoalsCard from "@/components/personal/WeeklyGoalsCard";
 import RecentActivityCard from "@/components/personal/RecentActivityCard";
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:3000');
 
 interface Metrics {
     totalLeads: number;

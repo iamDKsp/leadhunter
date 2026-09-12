@@ -15,7 +15,7 @@ export function Costs() {
     const fetchStats = async () => {
         try {
             const token = localStorage.getItem('token');
-            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+            const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:3000');
             const response = await axios.get(`${API_URL}/costs/stats`, {
                 headers: { Authorization: `Bearer ${token}` }
             });

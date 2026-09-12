@@ -35,6 +35,11 @@ const corsOptions = {
     origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
         if (!origin) return callback(null, true);
 
+        // Allow all if wildcard is present
+        if (ALLOWED_ORIGINS.includes('*')) {
+            return callback(null, true);
+        }
+
         // Allow any localhost / 127.0.0.1 port in development
         if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
             return callback(null, true);
@@ -45,8 +50,8 @@ const corsOptions = {
             return callback(null, true);
         }
 
-        // Allowed regex (vercel subdomains)
-        if (/\.vercel\.app$/.test(origin)) {
+        // Allowed regex (vercel, teltech, smartek subdomains)
+        if (/\.vercel\.app$/.test(origin) || /\.teltech\.com\.br$/.test(origin) || /\.smartek\.com\.br$/.test(origin)) {
             return callback(null, true);
         }
 
