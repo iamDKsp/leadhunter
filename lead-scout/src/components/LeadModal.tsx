@@ -86,8 +86,8 @@ export function LeadModal({ isOpen, onClose, onSave, editingLead }: LeadModalPro
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Info */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2 space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className="col-span-1 sm:col-span-2 space-y-2">
               <label className="text-sm font-medium text-muted-foreground">Nome da Empresa</label>
               <Input
                 value={formData.name}
@@ -121,7 +121,7 @@ export function LeadModal({ isOpen, onClose, onSave, editingLead }: LeadModalPro
           </div>
 
           {/* Classification */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-muted-foreground">Tipo de Empresa</label>
               <Select
@@ -175,7 +175,7 @@ export function LeadModal({ isOpen, onClose, onSave, editingLead }: LeadModalPro
           </div>
 
           {/* Location */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-muted-foreground">Cidade/Estado</label>
               <Input
@@ -196,7 +196,7 @@ export function LeadModal({ isOpen, onClose, onSave, editingLead }: LeadModalPro
               />
             </div>
 
-            <div className="col-span-2 space-y-2">
+            <div className="col-span-1 sm:col-span-2 space-y-2">
               <label className="text-sm font-medium text-muted-foreground">Endereço Completo</label>
               <Input
                 value={formData.address}
