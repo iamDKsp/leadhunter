@@ -15,7 +15,8 @@ import { toast } from "@/hooks/use-toast";
 import api from "@/services/api";
 import { useWhatsApp } from "@/context/WhatsAppContext";
 import { Button } from "@/components/ui/button";
-import { QrCode } from "lucide-react";
+import { QrCode, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { User } from "@/types/auth";
 
 // Helper to normalize chatId for matching (strips JID suffix and country prefix)
@@ -504,16 +505,22 @@ const Conversas = ({ user }: { user?: User }) => {
                 )}
             </div>
 
-            <div className="flex-1 flex overflow-hidden">
-                <ChatSidebar
-                    conversations={conversations}
-                    activeConversationId={activeConversationId}
-                    onSelectConversation={setActiveConversationId}
-                    connectionStatus={connectionStatus}
-                />
+            <div className="flex-1 flex overflow-hidden relative">
+                {/* Chat Sidebar: hidden on mobile if a conversation is active */}
+                <div className={cn(
+                    "h-full",
+                    activeConversation ? "hidden md:flex flex-shrink-0" : "flex w-full md:w-auto flex-shrink-0"
+                )}>
+                    <ChatSidebar
+                        conversations={conversations}
+                        activeConversationId={activeConversationId}
+                        onSelectConversation={setActiveConversationId}
+                        connectionStatus={connectionStatus}
+                    />
+                </div>
 
                 {activeConversation ? (
-                    <>
+                    <div className="flex-1 flex overflow-hidden w-full min-w-0">
                         <ChatWindow
                             conversation={activeConversation}
                             messages={messages[activeConversationId!] || []}
@@ -521,21 +528,53 @@ const Conversas = ({ user }: { user?: User }) => {
                             onSendMedia={handleSendMedia}
                             showInfoPanel={showInfoPanel}
                             onToggleInfoPanel={toggleInfoPanel}
+                            onBack={() => setActiveConversationId(null)}
                         />
+
+                        {/* Desktop LeadInfoPanel */}
                         {showInfoPanel && (
-                            <LeadInfoPanel
-                                conversation={activeConversation}
-                                lead={currentLead}
-                                followUps={followUps}
-                                userId={userId}
-                                onScheduleFollowUp={() => setIsSchedulerOpen(true)}
-                                onCompleteFollowUp={handleCompleteFollowUp}
-                                onDeleteFollowUp={handleDeleteFollowUp}
-                            />
+                            <div className="hidden lg:block h-full flex-shrink-0">
+                                <LeadInfoPanel
+                                    conversation={activeConversation}
+                                    lead={currentLead}
+                                    followUps={followUps}
+                                    userId={userId}
+                                    onScheduleFollowUp={() => setIsSchedulerOpen(true)}
+                                    onCompleteFollowUp={handleCompleteFollowUp}
+                                    onDeleteFollowUp={handleDeleteFollowUp}
+                                />
+                            </div>
                         )}
-                    </>
+
+                        {/* Mobile Slide-over LeadInfoPanel */}
+                        {showInfoPanel && (
+                            <div className="lg:hidden fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm">
+                                <div className="w-full max-w-sm h-full bg-card shadow-2xl relative flex flex-col">
+                                    <div className="p-3 border-b flex justify-between items-center bg-card">
+                                        <span className="font-semibold text-sm">Detalhes do Lead</span>
+                                        <Button variant="ghost" size="sm" onClick={() => setShowInfoPanel(false)}>
+                                            <X className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto">
+                                        <LeadInfoPanel
+                                            conversation={activeConversation}
+                                            lead={currentLead}
+                                            followUps={followUps}
+                                            userId={userId}
+                                            onScheduleFollowUp={() => setIsSchedulerOpen(true)}
+                                            onCompleteFollowUp={handleCompleteFollowUp}
+                                            onDeleteFollowUp={handleDeleteFollowUp}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 ) : (
-                    <EmptyState />
+                    <div className="hidden md:flex flex-1">
+                        <EmptyState />
+                    </div>
                 )}
             </div>
 

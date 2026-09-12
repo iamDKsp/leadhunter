@@ -40,22 +40,22 @@ export function Costs() {
     }
 
     return (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-4 sm:space-y-6 animate-fade-in">
             {/* Custo Total */}
-            <div className="bg-card/60 backdrop-blur-sm border border-border/30 rounded-xl p-6 max-w-md shadow-xl hover:border-primary/30 transition-all">
+            <div className="bg-card/60 backdrop-blur-sm border border-border/30 rounded-xl p-4 sm:p-6 max-w-md shadow-xl hover:border-primary/30 transition-all">
                 <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-muted-foreground">Custo Total</span>
                     <button className="text-muted-foreground hover:text-foreground transition-colors">
                         <Info className="w-4 h-4" />
                     </button>
                 </div>
-                <p className="text-3xl font-bold text-foreground">R$ {stats.totalCost.toFixed(2).replace('.', ',')}</p>
-                <p className="text-sm text-primary mt-1">Gasto total estimado com API</p>
+                <p className="text-2xl sm:text-3xl font-bold text-foreground">R$ {stats.totalCost.toFixed(2).replace('.', ',')}</p>
+                <p className="text-xs sm:text-sm text-primary mt-1">Gasto total estimado com API</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 {/* Custo por Usuário */}
-                <div className="bg-card/60 backdrop-blur-sm border border-border/30 rounded-xl p-6 shadow-xl">
+                <div className="bg-card/60 backdrop-blur-sm border border-border/30 rounded-xl p-4 sm:p-6 shadow-xl">
                     <h3 className="font-semibold text-foreground mb-4">Custo por Usuário</h3>
                     <div className="space-y-4">
                         {stats.costByUser.map((user) => (
@@ -79,7 +79,7 @@ export function Costs() {
                 </div>
 
                 {/* Buscas Recentes */}
-                <div className="bg-card/60 backdrop-blur-sm border border-border/30 rounded-xl p-6 shadow-xl">
+                <div className="bg-card/60 backdrop-blur-sm border border-border/30 rounded-xl p-4 sm:p-6 shadow-xl">
                     <h3 className="font-semibold text-foreground mb-4">Buscas Recentes</h3>
                     <div className="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
                         {stats.recentLogs.map((log) => (

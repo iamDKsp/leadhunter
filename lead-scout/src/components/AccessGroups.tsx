@@ -377,12 +377,12 @@ export function AccessGroups() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold">Grupos de Acesso</h2>
-                    <p className="text-muted-foreground">Gerencie grupos e permissões de usuários</p>
+                    <h2 className="text-xl sm:text-2xl font-bold">Grupos de Acesso</h2>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Gerencie grupos e permissões de usuários</p>
                 </div>
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                     <DialogTrigger asChild>

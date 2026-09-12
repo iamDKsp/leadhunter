@@ -45,7 +45,7 @@ export const ChatSidebar = ({
     ];
 
     return (
-        <div className="w-80 xl:w-96 h-full flex flex-col bg-card/90 backdrop-blur-xl border-r border-border">
+        <div className="w-full md:w-80 xl:w-96 h-full flex flex-col bg-card/90 backdrop-blur-xl border-r border-border flex-shrink-0">
             {/* Header */}
             <div className="p-4 border-b border-border">
                 <div className="flex items-center justify-between mb-4">

@@ -80,22 +80,22 @@ export default function LeadManagement() {
     }
 
     return (
-        <div className="p-6 space-y-6 h-full flex flex-col overflow-hidden">
-            <div className="flex justify-between items-center">
+        <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 h-full flex flex-col overflow-hidden">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Triagem de Leads</h1>
-                    <p className="text-muted-foreground">
+                    <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Triagem de Leads</h1>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                         Gerencie leads recém-importados e atribua responsáveis.
                     </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                     <div className="flex items-center gap-2">
                         <Input
                             type="number"
                             min="1"
                             max={leads.length}
                             placeholder="Qtd..."
-                            className="w-24 h-9"
+                            className="w-20 sm:w-24 h-9"
                             value={selectCount}
                             onChange={(e) => setSelectCount(e.target.value)}
                             onKeyDown={(e) => {
@@ -108,24 +108,24 @@ export default function LeadManagement() {
                     </div>
                     {selectedLeadIds.length > 0 && (
                         <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-5">
-                            <span className="text-sm text-muted-foreground">
+                            <span className="text-xs sm:text-sm text-muted-foreground">
                                 {selectedLeadIds.length} selecionado(s)
                             </span>
-                            <Button onClick={handleBulkAssign} className="gap-2">
+                            <Button onClick={handleBulkAssign} className="gap-2" size="sm">
                                 <Users className="w-4 h-4" />
-                                Atribuir Selecionados
+                                Atribuir
                             </Button>
                         </div>
                     )}
-                    <Badge variant="secondary" className="text-lg px-4 py-1">
+                    <Badge variant="secondary" className="text-sm sm:text-base px-3 py-1">
                         {leads.length} Pendentes
                     </Badge>
                 </div>
             </div>
 
             <Card className="flex-1 overflow-hidden flex flex-col border-0 shadow-none bg-transparent">
-                <CardContent className="p-0 flex-1 overflow-auto rounded-md border bg-card">
-                    <Table>
+                <CardContent className="p-0 flex-1 overflow-auto rounded-md border bg-card custom-scrollbar">
+                    <Table className="min-w-[650px]">
                         <TableHeader>
                             <TableRow>
                                 <TableHead className="w-[50px]">

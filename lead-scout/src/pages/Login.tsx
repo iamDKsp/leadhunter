@@ -19,32 +19,7 @@ const Login = () => {
             localStorage.setItem('token', data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
 
-            const preference = data.user.interfacePreference || 'BOTH';
-
-            if (preference === 'MOBILE') {
-                // Check if we are already on the mobile port (simple check, assuming localhost)
-                if (window.location.port !== '8081') {
-                    // Pass token to allow seamless login
-                    window.location.href = `http://localhost:8081?t=${data.token}`;
-                    return;
-                }
-            } else if (preference === 'PC') {
-                if (window.location.port === '8081') {
-                    window.location.href = 'http://localhost:5173';
-                    return;
-                }
-            }
-
-            if (preference === 'MOBILE' && window.innerWidth > 768) {
-                toast.warning('Sua conta é configurada para acesso Mobile. A experiência no PC pode ser limitada.');
-            } else if (preference === 'PC' && window.innerWidth <= 768) {
-                toast.warning('Sua conta é configurada para acesso PC. A experiência no Mobile pode ser limitada.');
-            }
-
             toast.success('Login realizado com sucesso!');
-
-            // Here you could redirect to different routes if they existed
-            // For now, we just go to dashboard
             navigate('/');
         } catch (error) {
             toast.error('Erro na autenticação. Verifique seus dados.');
@@ -52,11 +27,11 @@ const Login = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
+        <div className="min-h-screen flex items-center justify-center relative overflow-hidden p-4">
             <GeometricBackground />
             <CrownLogo />
 
-            <div className="login-card w-full max-w-sm p-8">
+            <div className="login-card w-full max-w-sm p-6 sm:p-8">
                 <h1 className="text-center text-primary font-bold text-xl tracking-widest mb-8">
                     LEAD HUNTER
                 </h1>

@@ -235,19 +235,6 @@ export function Users() {
                                     </div>
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="interface">Interface Preferida</Label>
-                                <Select value={interfacePreference} onValueChange={setInterfacePreference}>
-                                    <SelectTrigger className="bg-secondary/50 border-input">
-                                        <SelectValue placeholder="Selecione a interface" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="BOTH">Ambos (PC e Mobile)</SelectItem>
-                                        <SelectItem value="PC">Apenas PC</SelectItem>
-                                        <SelectItem value="MOBILE">Apenas Mobile</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
 
                             <div className="flex items-center space-x-2 bg-secondary/30 p-3 rounded-lg border border-border/50">
                                 <input
@@ -296,13 +283,12 @@ export function Users() {
                 </div>
 
                 <div className="overflow-x-auto">
-                    <table className="w-full">
+                    <table className="w-full min-w-[650px]">
                         <thead>
                             <tr className="border-b border-border/30">
                                 <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Nome</th>
                                 <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Email</th>
                                 <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Tag</th>
-                                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Interface</th>
                                 <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Criado em</th>
                                 <th className="text-right px-6 py-4 text-sm font-medium text-muted-foreground">Ações</th>
                             </tr>
@@ -328,7 +314,6 @@ export function Users() {
                                             <span className="text-muted-foreground text-xs">-</span>
                                         )}
                                     </td>
-                                    <td className="px-6 py-4 text-muted-foreground">{user.interfacePreference || 'BOTH'}</td>
                                     <td className="px-6 py-4 text-muted-foreground">{new Date(user.createdAt).toLocaleDateString()}</td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center justify-end gap-2">

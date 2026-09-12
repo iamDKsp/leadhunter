@@ -1,4 +1,4 @@
-import { Plus, Bell, User, LogOut, MessageSquare, X } from 'lucide-react';
+import { Plus, Bell, User, LogOut, MessageSquare, X, Menu } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,17 +16,29 @@ interface HeaderProps {
   onAddLead: () => void;
   user?: { name: string; email: string };
   onLogout: () => void;
+  onToggleMobileMenu?: () => void;
 }
 
-export function Header({ title, subtitle, onAddLead, user, onLogout }: HeaderProps) {
+export function Header({ title, subtitle, onAddLead, user, onLogout, onToggleMobileMenu }: HeaderProps) {
   const { pendingNotifications, dismissNotification, dismissAllNotifications } = useWhatsApp();
   const navigate = useNavigate();
 
   return (
-    <header className="flex items-center justify-between px-6 py-4 border-b border-border/30 bg-card/50 backdrop-blur-sm sticky top-0 z-40 transition-all duration-300">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground tracking-tight">{title}</h1>
-        {subtitle && <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>}
+    <header className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 border-b border-border/30 bg-card/50 backdrop-blur-sm sticky top-0 z-40 transition-all duration-300">
+      <div className="flex items-center gap-2.5 min-w-0">
+        {onToggleMobileMenu && (
+          <button
+            onClick={onToggleMobileMenu}
+            className="md:hidden p-2 -ml-1 rounded-lg border border-border/50 text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
+            aria-label="Abrir menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-2xl font-bold text-foreground tracking-tight truncate">{title}</h1>
+          {subtitle && <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 truncate hidden sm:block">{subtitle}</p>}
+        </div>
       </div>
 
       <div className="flex items-center gap-3">

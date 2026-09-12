@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Paperclip, Smile, MoreVertical, Phone, Video, X, File, PanelRightOpen, PanelRightClose } from "lucide-react";
+import { Send, Paperclip, Smile, MoreVertical, Phone, Video, X, File, PanelRightOpen, PanelRightClose, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MessageBubble, Message } from "./MessageBubble";
 import { QuickTemplates } from "./QuickTemplates";
@@ -22,6 +22,7 @@ interface ChatWindowProps {
     onSendMedia: (file: string, type: string) => void;
     showInfoPanel: boolean;
     onToggleInfoPanel: () => void;
+    onBack?: () => void;
 }
 
 export const ChatWindow = ({
@@ -30,7 +31,8 @@ export const ChatWindow = ({
     onSendMessage,
     onSendMedia,
     showInfoPanel,
-    onToggleInfoPanel
+    onToggleInfoPanel,
+    onBack
 }: ChatWindowProps) => {
     const [inputValue, setInputValue] = useState("");
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -230,24 +232,34 @@ export const ChatWindow = ({
             </Dialog>
 
             {/* Chat Header */}
-            <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-card/30">
-                <div className="flex items-center gap-3">
+            <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-border flex items-center justify-between bg-card/30">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    {onBack && (
+                        <button
+                            onClick={onBack}
+                            className="md:hidden p-1.5 -ml-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
+                            title="Voltar para lista"
+                            aria-label="Voltar para lista"
+                        >
+                            <ArrowLeft className="h-5 w-5" />
+                        </button>
+                    )}
                     {conversation.avatar ? (
                         <img
                             src={conversation.avatar}
                             alt={conversation.leadName}
-                            className="h-10 w-10 rounded-full object-cover border border-border"
+                            className="h-9 w-9 sm:h-10 sm:w-10 rounded-full object-cover border border-border flex-shrink-0"
                         />
                     ) : (
-                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center border border-primary/30">
-                            <span className="font-semibold text-primary">
+                        <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center border border-primary/30 flex-shrink-0">
+                            <span className="font-semibold text-primary text-sm sm:text-base">
                                 {conversation.leadName.charAt(0).toUpperCase()}
                             </span>
                         </div>
                     )}
-                    <div>
-                        <h3 className="font-medium text-foreground">{conversation.leadName}</h3>
-                        <p className="text-xs text-primary">{conversation.businessName}</p>
+                    <div className="min-w-0">
+                        <h3 className="font-medium text-foreground text-sm sm:text-base truncate">{conversation.leadName}</h3>
+                        <p className="text-xs text-primary truncate">{conversation.businessName}</p>
                     </div>
                 </div>
 

@@ -106,6 +106,7 @@ const Index = () => {
     contacted: 'all',
   });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => window.innerWidth < 768);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [activeChat, setActiveChat] = useState<{ number: string, name: string } | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -313,14 +314,16 @@ const Index = () => {
         onAddFolder={handleAddFolder}
         isCollapsed={isSidebarCollapsed}
         toggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-
         user={user}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        mobileOpen={isMobileMenuOpen}
+        onCloseMobile={() => setIsMobileMenuOpen(false)}
       />
 
       <main className={cn(
-        "flex-1 flex flex-col overflow-hidden transition-all duration-300",
-        isSidebarCollapsed ? "ml-20" : "ml-64"
+        "flex-1 flex flex-col overflow-hidden transition-all duration-300 min-w-0",
+        "ml-0",
+        isSidebarCollapsed ? "md:ml-20" : "md:ml-64"
       )}>
         <Header
           title={viewInfo.title}
@@ -328,11 +331,12 @@ const Index = () => {
           onAddLead={handleAddLead}
           user={user}
           onLogout={handleLogout}
+          onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         />
 
         <div className={cn(
           "flex-1 overflow-auto custom-scrollbar bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-background to-background",
-          activeView === 'conversas' ? "p-0" : "p-6"
+          activeView === 'conversas' ? "p-0" : "p-3 sm:p-4 md:p-6"
         )}>
           {activeView === 'search' ? (
             <GoogleMapsSearch onLeadAdded={(newLead) => {

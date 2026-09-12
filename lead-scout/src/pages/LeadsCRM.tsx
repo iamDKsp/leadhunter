@@ -255,10 +255,10 @@ const LeadsCRM = ({ user }: LeadsCRMProps) => {
     const hasManagePermissions = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN' || user?.permissions?.canManageLeads;
 
     return (
-        <div className="flex-1 overflow-hidden p-4 md:p-6 flex flex-col h-full">
+        <div className="flex-1 overflow-hidden p-2 sm:p-4 md:p-6 flex flex-col h-full">
             {/* Toolbar */}
-            <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
-                <div className="flex items-center gap-3 flex-1 min-w-[200px] max-w-md">
+            <div className="flex items-center justify-between mb-4 sm:mb-6 gap-3 sm:gap-4 flex-wrap">
+                <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-[180px] sm:min-w-[200px] max-w-md">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
@@ -283,7 +283,7 @@ const LeadsCRM = ({ user }: LeadsCRMProps) => {
                     </Button>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                     {/* View Toggle */}
                     <div className="flex items-center bg-card/60 border border-border/30 rounded-lg p-1">
                         <button

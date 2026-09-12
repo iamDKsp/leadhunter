@@ -29,15 +29,15 @@ const MonitoringFilters = ({
     const hasActiveFilters = statusFilter !== "all";
 
     return (
-        <div className="bg-card/60 backdrop-blur-sm border border-border/50 rounded-xl p-4">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+        <div className="bg-card/60 backdrop-blur-sm border border-border/50 rounded-xl p-3 sm:p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     <div className="flex items-center gap-2">
                         <Filter className="w-4 h-4 text-muted-foreground" />
                         <span className="text-sm font-medium text-foreground">Filtros:</span>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                         {statusOptions.map((option) => (
                             <button
                                 key={option.value}

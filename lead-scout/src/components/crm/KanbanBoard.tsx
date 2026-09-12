@@ -33,7 +33,7 @@ const KanbanBoard = ({ leads, stages, onLeadMove, onEditStage, onViewLead, onAss
 
     return (
         <DragDropContext onDragEnd={handleDragEnd}>
-            <div className="flex gap-4 overflow-x-auto pb-4 h-[calc(100vh-280px)]">
+            <div className="flex gap-4 overflow-x-auto pb-4 h-[calc(100vh-280px)] snap-x snap-mandatory md:snap-none custom-scrollbar">
                 {sortedStages.map((stage) => (
                     <KanbanColumn
                         key={stage.id}

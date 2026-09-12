@@ -132,28 +132,30 @@ export function GoogleMapsSearch({ onLeadAdded }: GoogleMapsSearchProps) {
     return (
         <div className="space-y-6">
 
-            <Card className="p-6">
+            <Card className="p-4 sm:p-6">
                 <div className="space-y-4">
                     <form onSubmit={handleSearch} className="flex flex-col gap-4">
-                        <div className="flex gap-4">
+                        <div className="flex flex-col sm:flex-row gap-3">
                             <Input
                                 placeholder="Ex: Barbearias, Mecânicas, Restaurantes..."
                                 value={query}
                                 onChange={(e) => setQuery(e.target.value)}
                                 className="flex-1"
                             />
-                            <Button type="button" variant="outline" onClick={() => setIsFilterOpen(!isFilterOpen)}>
-                                <MapPin className="w-4 h-4 mr-2" />
-                                Mapa
-                            </Button>
-                            <Button type="button" variant="outline" onClick={() => setShowAdvanced(!showAdvanced)}>
-                                <Filter className="w-4 h-4 mr-2" />
-                                Filtros
-                            </Button>
-                            <Button type="submit" disabled={isLoading} className="bg-primary text-white">
-                                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                Pesquisar
-                            </Button>
+                            <div className="flex items-center gap-2">
+                                <Button type="button" variant="outline" className="flex-1 sm:flex-initial" onClick={() => setIsFilterOpen(!isFilterOpen)}>
+                                    <MapPin className="w-4 h-4 mr-1.5" />
+                                    Mapa
+                                </Button>
+                                <Button type="button" variant="outline" className="flex-1 sm:flex-initial" onClick={() => setShowAdvanced(!showAdvanced)}>
+                                    <Filter className="w-4 h-4 mr-1.5" />
+                                    Filtros
+                                </Button>
+                                <Button type="submit" disabled={isLoading} className="bg-primary text-white flex-1 sm:flex-initial">
+                                    {isLoading ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
+                                    Pesquisar
+                                </Button>
+                            </div>
                         </div>
 
                         {/* Geographic Filter */}
@@ -166,7 +168,7 @@ export function GoogleMapsSearch({ onLeadAdded }: GoogleMapsSearchProps) {
                         {/* Advanced Filters */}
                         <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
                             <CollapsibleContent className="animate-in slide-in-from-top-2 duration-300">
-                                <div className="mt-2 p-4 bg-muted/50 rounded-lg border grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                                <div className="mt-2 p-4 bg-muted/50 rounded-lg border grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
 
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium">Quantidade</label>

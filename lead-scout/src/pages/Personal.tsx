@@ -160,12 +160,12 @@ export function Personal({ userName = "Usuário" }: PersonalProps) {
         : 0;
 
     return (
-        <div className="p-8 space-y-8">
+        <div className="p-3 sm:p-6 md:p-8 space-y-4 sm:space-y-6 md:space-y-8">
             {/* Welcome Section */}
             <WelcomeSection userName={userName} />
 
             {/* Quick Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 <MetricCard
                     title="Total de Leads"
                     value={metrics.totalLeads}

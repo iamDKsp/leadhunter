@@ -50,15 +50,17 @@ const UsersTable = ({ users }: UsersTableProps) => {
 
     return (
         <div className="rounded-xl border border-border/50 overflow-hidden bg-card/60 backdrop-blur-sm">
-            {/* Header */}
-            <div className="grid grid-cols-7 gap-4 px-4 py-3 bg-muted/30 border-b border-border/50 text-sm font-medium text-muted-foreground">
-                <div className="col-span-1"></div>
-                <div className="col-span-2">Usuário</div>
-                <div>Status</div>
-                <div>Última Atividade</div>
-                <div>Tempo Online</div>
-                <div className="text-right">Conversas</div>
-            </div>
+            <div className="overflow-x-auto custom-scrollbar">
+                <div className="min-w-[700px]">
+                    {/* Header */}
+                    <div className="grid grid-cols-7 gap-4 px-4 py-3 bg-muted/30 border-b border-border/50 text-sm font-medium text-muted-foreground">
+                        <div className="col-span-1"></div>
+                        <div className="col-span-2">Usuário</div>
+                        <div>Status</div>
+                        <div>Última Atividade</div>
+                        <div>Tempo Online</div>
+                        <div className="text-right">Conversas</div>
+                    </div>
 
             {/* Body */}
             <div className="divide-y divide-border/30">
@@ -178,6 +180,8 @@ const UsersTable = ({ users }: UsersTableProps) => {
                     <p className="text-muted-foreground">Nenhum usuário encontrado</p>
                 </div>
             )}
+                </div>
+            </div>
         </div>
     );
 };
