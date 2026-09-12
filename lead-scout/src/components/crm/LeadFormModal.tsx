@@ -13,6 +13,7 @@ import api from '@/services/api';
 import CelebrationModal from './CelebrationModal';
 import MeetingModal from './MeetingModal';
 import { FirstContactTemplateModal } from './FirstContactTemplateModal';
+import { getMediaUrl, getCompanyInitials, getCompanyAvatarColor } from '@/utils/media';
 
 // Preset tag colors
 const TAG_COLORS = [
@@ -412,21 +413,32 @@ const LeadFormModal = ({ open, onClose, onSave, lead, stages }: LeadFormModalPro
                     <DialogHeader>
                         {lead && (
                             <div className="flex items-center gap-4 mb-2">
-                                <div
-                                    className="w-20 h-20 rounded-xl overflow-hidden bg-muted flex-shrink-0 flex items-center justify-center border border-border/30 cursor-pointer hover:opacity-80 transition-opacity"
-                                    onClick={() => { if (lead.photoUrl) setIsImageOpen(true); }}
-                                >
-                                    {lead.photoUrl ? (
-                                        <img src={lead.photoUrl} alt={lead.name} className="w-full h-full object-cover"
-                                            onError={(e) => {
-                                                const target = e.target as HTMLImageElement;
-                                                target.style.display = 'none';
-                                                target.nextElementSibling?.classList.remove('hidden');
-                                            }}
-                                        />
-                                    ) : null}
-                                    <Building2 className={`w-8 h-8 text-muted-foreground ${lead.photoUrl ? 'hidden' : ''}`} />
-                                </div>
+                                {(() => {
+                                    const photo = getMediaUrl(lead.photoUrl);
+                                    return (
+                                        <div
+                                            className={`w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center font-bold text-xl border ${
+                                                photo
+                                                    ? 'bg-muted border-border/30 cursor-pointer hover:opacity-80 transition-opacity'
+                                                    : getCompanyAvatarColor(lead.name)
+                                            }`}
+                                            onClick={() => { if (photo) setIsImageOpen(true); }}
+                                        >
+                                            {photo ? (
+                                                <img src={photo} alt={lead.name} className="w-full h-full object-cover"
+                                                    onError={(e) => {
+                                                        const target = e.target as HTMLImageElement;
+                                                        target.style.display = 'none';
+                                                        target.nextElementSibling?.classList.remove('hidden');
+                                                    }}
+                                                />
+                                            ) : null}
+                                            <span className={photo ? 'hidden' : ''}>
+                                                {getCompanyInitials(lead.name)}
+                                            </span>
+                                        </div>
+                                    );
+                                })()}
                                 <div className="flex-1 min-w-0">
                                     <DialogTitle className="text-xl font-semibold truncate">{lead.name}</DialogTitle>
                                     <div className="flex items-center gap-2">
@@ -802,10 +814,13 @@ const LeadFormModal = ({ open, onClose, onSave, lead, stages }: LeadFormModalPro
                             className="absolute -top-10 right-0 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors">
                             <X className="w-6 h-6" />
                         </button>
-                        {lead?.photoUrl && (
-                            <img src={lead.photoUrl} alt={lead.name}
-                                className="max-w-full max-h-[85vh] rounded-lg shadow-2xl object-contain" />
-                        )}
+                        {(() => {
+                            const photo = getMediaUrl(lead?.photoUrl);
+                            return photo ? (
+                                <img src={photo} alt={lead.name}
+                                    className="max-w-full max-h-[85vh] rounded-lg shadow-2xl object-contain" />
+                            ) : null;
+                        })()}
                     </div>
                 </DialogContent>
             </Dialog>

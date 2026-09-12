@@ -17,6 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { MapPin, UserPlus, Users } from 'lucide-react';
 import { LeadAssignmentModal } from '@/components/LeadAssignmentModal';
 import { toast } from 'sonner';
+import { getMediaUrl, getCompanyInitials, getCompanyAvatarColor } from '@/utils/media';
 
 export default function LeadManagement() {
     // Only fetch TRIAGE leads
@@ -161,9 +162,30 @@ export default function LeadManagement() {
                                         </TableCell>
                                         <TableCell className="font-medium">
                                             <div className="flex items-center gap-2">
-                                                {lead.photoUrl && (
-                                                    <img src={lead.photoUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
-                                                )}
+                                                {(() => {
+                                                    const photo = getMediaUrl(lead.photoUrl);
+                                                    return (
+                                                        <div className={`w-8 h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center font-bold text-xs border ${
+                                                            photo ? 'bg-muted border-border/30' : getCompanyAvatarColor(lead.name)
+                                                        }`}>
+                                                            {photo ? (
+                                                                <img
+                                                                    src={photo}
+                                                                    alt=""
+                                                                    className="w-full h-full object-cover"
+                                                                    onError={(e) => {
+                                                                        const target = e.target as HTMLImageElement;
+                                                                        target.style.display = 'none';
+                                                                        target.nextElementSibling?.classList.remove('hidden');
+                                                                    }}
+                                                                />
+                                                            ) : null}
+                                                            <span className={photo ? 'hidden' : ''}>
+                                                                {getCompanyInitials(lead.name)}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })()}
                                                 <span>{lead.name}</span>
                                             </div>
                                         </TableCell>

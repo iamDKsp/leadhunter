@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '@/services/api';
 import { toast } from 'sonner';
 import { getSelectedTemplate } from './FirstContactTemplateModal';
+import { getMediaUrl, getCompanyInitials, getCompanyAvatarColor } from '@/utils/media';
 
 interface KanbanCardProps {
     lead: Lead;
@@ -21,6 +22,7 @@ const KanbanCard = ({ lead, isDragging, onView, onAssign, stages = [], onLeadSta
     const [isChatLoading, setIsChatLoading] = useState(false);
     const [isQuickSending, setIsQuickSending] = useState(false);
     const navigate = useNavigate();
+    const resolvedPhotoUrl = getMediaUrl(lead.photoUrl);
 
     const handleChatClick = async (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -134,17 +136,22 @@ const KanbanCard = ({ lead, isDragging, onView, onAssign, stages = [], onLeadSta
                 {/* Header with Photo */}
                 <div className="flex items-start justify-between mb-2 gap-2">
                     <div className="flex items-start gap-2 flex-1 min-w-0">
-                        {/* Photo Thumbnail */}
+                        {/* Photo Thumbnail / Initials Avatar */}
                         <div
-                            className="w-10 h-10 rounded-lg overflow-hidden bg-muted flex-shrink-0 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+                            className={`w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center font-bold text-xs border ${
+                                resolvedPhotoUrl
+                                    ? 'bg-muted cursor-pointer hover:opacity-80 transition-opacity border-border/50'
+                                    : getCompanyAvatarColor(lead.name)
+                            }`}
                             onClick={(e) => {
                                 e.stopPropagation();
-                                if (lead.photoUrl) setIsImageOpen(true);
+                                if (resolvedPhotoUrl) setIsImageOpen(true);
                             }}
+                            title={lead.name}
                         >
-                            {lead.photoUrl ? (
+                            {resolvedPhotoUrl ? (
                                 <img
-                                    src={lead.photoUrl}
+                                    src={resolvedPhotoUrl}
                                     alt={lead.name}
                                     className="w-full h-full object-cover"
                                     onError={(e) => {
@@ -154,7 +161,9 @@ const KanbanCard = ({ lead, isDragging, onView, onAssign, stages = [], onLeadSta
                                     }}
                                 />
                             ) : null}
-                            <Building2 className={`w-5 h-5 text-muted-foreground ${lead.photoUrl ? 'hidden' : ''}`} />
+                            <span className={resolvedPhotoUrl ? 'hidden' : ''}>
+                                {getCompanyInitials(lead.name)}
+                            </span>
                         </div>
                         <div className="flex-1 min-w-0">
                             <h4 className="font-medium text-foreground text-sm truncate pr-1 capitalize">{lead.name}</h4>
@@ -312,9 +321,9 @@ const KanbanCard = ({ lead, isDragging, onView, onAssign, stages = [], onLeadSta
                         >
                             <X className="w-6 h-6" />
                         </button>
-                        {lead.photoUrl && (
+                        {resolvedPhotoUrl && (
                             <img
-                                src={lead.photoUrl}
+                                src={resolvedPhotoUrl}
                                 alt={lead.name}
                                 className="max-w-full max-h-[85vh] rounded-lg shadow-2xl object-contain"
                             />

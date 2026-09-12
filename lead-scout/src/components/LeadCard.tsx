@@ -22,6 +22,7 @@ import {
   Dialog,
   DialogContent,
 } from '@/components/ui/dialog';
+import { getMediaUrl, getCompanyInitials, getCompanyAvatarColor } from '@/utils/media';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +40,7 @@ interface LeadCardProps {
 
 export function LeadCard({ lead, onEdit, onDelete, onToggleContacted, onChatClick }: LeadCardProps) {
   const [isImageOpen, setIsImageOpen] = useState(false);
+  const resolvedPhotoUrl = getMediaUrl(lead.photoUrl);
   const typeInfo = COMPANY_TYPES[lead.type] || COMPANY_TYPES['outros'];
 
   const getProgressColor = (value: number) => {
@@ -73,16 +75,21 @@ export function LeadCard({ lead, onEdit, onDelete, onToggleContacted, onChatClic
       {/* Header */}
       <div className="flex items-start justify-between mb-3 pl-8">
         <div className="flex items-start gap-3 flex-1 pr-2">
-          {/* Photo Thumbnail */}
+          {/* Photo Thumbnail / Initials Avatar */}
           <div
-            className="w-12 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0 flex items-center justify-center border border-border/30 cursor-pointer hover:opacity-80 transition-opacity"
+            className={`w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center font-bold text-sm border ${
+              resolvedPhotoUrl
+                ? 'bg-muted border-border/30 cursor-pointer hover:opacity-80 transition-opacity'
+                : getCompanyAvatarColor(lead.name)
+            }`}
             onClick={() => {
-              if (lead.photoUrl) setIsImageOpen(true);
+              if (resolvedPhotoUrl) setIsImageOpen(true);
             }}
+            title={lead.name}
           >
-            {lead.photoUrl ? (
+            {resolvedPhotoUrl ? (
               <img
-                src={lead.photoUrl}
+                src={resolvedPhotoUrl}
                 alt={lead.name}
                 className="w-full h-full object-cover"
                 onError={(e) => {
@@ -92,7 +99,9 @@ export function LeadCard({ lead, onEdit, onDelete, onToggleContacted, onChatClic
                 }}
               />
             ) : null}
-            <Building2 className={`w-6 h-6 text-muted-foreground ${lead.photoUrl ? 'hidden' : ''}`} />
+            <span className={resolvedPhotoUrl ? 'hidden' : ''}>
+              {getCompanyInitials(lead.name)}
+            </span>
           </div>
 
           <div className="flex-1 min-w-0">
@@ -239,9 +248,9 @@ export function LeadCard({ lead, onEdit, onDelete, onToggleContacted, onChatClic
             >
               <X className="w-6 h-6" />
             </button>
-            {lead.photoUrl && (
+            {resolvedPhotoUrl && (
               <img
-                src={lead.photoUrl}
+                src={resolvedPhotoUrl}
                 alt={lead.name}
                 className="max-w-full max-h-[85vh] rounded-lg shadow-2xl object-contain"
               />

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma';
-import { searchPlaces, getPlaceDetails, getPlacePhotoUrl } from '../services/googleMapsService';
+import { searchPlaces, getPlaceDetails, downloadAndSavePlacePhoto } from '../services/googleMapsService';
 import { AuthRequest } from '../middleware/auth';
 import { getUserPermissions } from '../middleware/authorization';
 
@@ -94,9 +94,12 @@ export const importCompany = async (req: AuthRequest, res: Response) => {
             console.error("Failed to log import cost:", costError);
         }
 
-        // Extract photo URL from Place Details response
+        // Download and store photo locally (1 time only, server-side)
         const photoReference = details.photos?.[0]?.photo_reference;
-        const photoUrl = getPlacePhotoUrl(photoReference);
+        let photoUrl: string | null = null;
+        if (photoReference) {
+            photoUrl = await downloadAndSavePlacePhoto(photoReference, details.name);
+        }
 
         const newCompany = await prisma.company.create({
             data: {

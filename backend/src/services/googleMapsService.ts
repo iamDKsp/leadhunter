@@ -155,17 +155,77 @@ export const getPlaceDetails = async (placeId: string): Promise<any> => {
     }
 }
 
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
+
 /**
- * Generate a Google Places Photo URL from a photo reference
+ * Download photo from Google Places API and save locally in uploads folder
  * @param photoReference - The photo_reference from Place Details API
+ * @param filenamePrefix - Prefix for saved file name (e.g. company name)
  * @param maxWidth - Maximum width of the photo (default: 400)
- * @returns The photo URL or null if no reference
+ * @returns Local URL path (e.g. /uploads/companies/xyz.jpg) or null if download fails
  */
-export const getPlacePhotoUrl = (photoReference: string | undefined, maxWidth: number = 400): string | null => {
+export const downloadAndSavePlacePhoto = async (
+    photoReference: string | undefined,
+    filenamePrefix: string = 'company',
+    maxWidth: number = 400
+): Promise<string | null> => {
     if (!photoReference || !GOOGLE_MAPS_API_KEY) {
         return null;
     }
 
-    return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth}&photo_reference=${photoReference}&key=${GOOGLE_MAPS_API_KEY}`;
-}
+    try {
+        const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'companies');
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+
+        const safePrefix = filenamePrefix
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-zA-Z0-9_-]/g, '_')
+            .substring(0, 30);
+        const uniqueSuffix = `${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+        const fileName = `${safePrefix}_${uniqueSuffix}.jpg`;
+        const filePath = path.join(uploadDir, fileName);
+
+        const googlePhotoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth}&photo_reference=${photoReference}&key=${GOOGLE_MAPS_API_KEY}`;
+
+        const response = await axios.get(googlePhotoUrl, {
+            responseType: 'arraybuffer',
+            timeout: 10000,
+            headers: {
+                'User-Agent': 'LeadHunter/1.0'
+            }
+        });
+
+        if (response.status === 200 && response.data) {
+            const contentType = response.headers['content-type'] || '';
+            if (contentType.startsWith('image/')) {
+                await fs.promises.writeFile(filePath, Buffer.from(response.data));
+                console.log(`[GoogleMaps] Photo downloaded and saved: /uploads/companies/${fileName}`);
+                return `/uploads/companies/${fileName}`;
+            }
+        }
+
+        return null;
+    } catch (error: any) {
+        const status = error.response?.status;
+        if (status === 403) {
+            console.warn(`[GoogleMaps] Photo download skipped: 403 Forbidden (quota exceeded or key restricted)`);
+        } else {
+            console.warn(`[GoogleMaps] Photo download skipped: ${error.message || 'Unknown error'}`);
+        }
+        return null;
+    }
+};
+
+/**
+ * Generate a Google Places Photo URL from a photo reference
+ * @deprecated Use downloadAndSavePlacePhoto to save photos locally and protect API key.
+ */
+export const getPlacePhotoUrl = (photoReference: string | undefined, maxWidth: number = 400): string | null => {
+    return null;
+};
 

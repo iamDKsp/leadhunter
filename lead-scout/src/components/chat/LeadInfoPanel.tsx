@@ -1,5 +1,6 @@
 import { Conversation } from "./ConversationItem";
 import { Lead } from "@/types/lead";
+import { getMediaUrl } from "@/utils/media";
 import {
     Phone,
     MapPin,
@@ -131,18 +132,25 @@ export const LeadInfoPanel = ({
         <div className="w-72 h-full bg-card/90 backdrop-blur-xl border-l border-border flex flex-col">
             {/* Header */}
             <div className="p-4 border-b border-border text-center">
-                <div className="h-20 w-20 mx-auto rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center border-2 border-primary/30 mb-3">
-                    {conversation.avatar || (lead && lead.photoUrl) ? (
-                        <img
-                            src={conversation.avatar || lead?.photoUrl}
-                            alt={lead?.name || conversation.leadName}
-                            className="h-full w-full rounded-full object-cover"
-                        />
-                    ) : (
-                        <span className="text-3xl font-bold text-primary">
-                            {(lead?.name || conversation.leadName).charAt(0).toUpperCase()}
-                        </span>
-                    )}
+                <div className="h-20 w-20 mx-auto rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center border-2 border-primary/30 mb-3 overflow-hidden">
+                    {(() => {
+                        const avatarSrc = conversation.avatar || getMediaUrl(lead?.photoUrl);
+                        return avatarSrc ? (
+                            <img
+                                src={avatarSrc}
+                                alt={lead?.name || conversation.leadName}
+                                className="h-full w-full rounded-full object-cover"
+                                onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    target.nextElementSibling?.classList.remove('hidden');
+                                }}
+                            />
+                        ) : null;
+                    })()}
+                    <span className={`text-3xl font-bold text-primary ${conversation.avatar || getMediaUrl(lead?.photoUrl) ? 'hidden' : ''}`}>
+                        {(lead?.name || conversation.leadName).charAt(0).toUpperCase()}
+                    </span>
                 </div>
                 <h3 className="font-semibold text-foreground text-lg">
                     {lead?.name || conversation.leadName}
