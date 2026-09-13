@@ -84,7 +84,7 @@ export function LeadFilterModal({
 
     return (
         <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
-            <DialogContent className="w-full sm:max-w-[425px] max-h-[90dvh] overflow-y-auto rounded-t-3xl sm:rounded-xl bottom-0 top-auto sm:top-[50%] translate-y-0 sm:-translate-y-1/2 p-5 sm:p-6 bg-card border-border backdrop-blur-xl">
+            <DialogContent className="w-full sm:max-w-[425px] max-h-[90dvh] overflow-y-auto rounded-t-3xl sm:rounded-xl bottom-0 top-auto left-0 right-0 translate-x-0 translate-y-0 sm:left-1/2 sm:top-1/2 sm:bottom-auto sm:right-auto sm:-translate-x-1/2 sm:-translate-y-1/2 p-5 sm:p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] bg-card border-border backdrop-blur-xl">
                 {/* Mobile drag handle */}
                 <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full mx-auto mb-2 sm:hidden" />
                 <DialogHeader>

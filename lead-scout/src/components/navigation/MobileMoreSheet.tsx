@@ -98,7 +98,7 @@ export const MobileMoreSheet: React.FC<MobileMoreSheetProps> = ({
       />
 
       {/* Sheet Container */}
-      <div className="fixed bottom-0 left-0 right-0 max-h-[85vh] bg-card/95 backdrop-blur-2xl border-t border-border/50 rounded-t-3xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-200">
+      <div className="fixed bottom-0 left-0 right-0 max-h-[85vh] bg-card/95 backdrop-blur-2xl border-t border-border/50 rounded-t-3xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-200 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
         {/* Drag Handle Indicator */}
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full" />

@@ -418,99 +418,101 @@ const LeadFormModal = ({ open, onClose, onSave, lead, stages }: LeadFormModalPro
     return (
         <>
             <Dialog open={open} onOpenChange={onClose}>
-                <DialogContent className="w-full max-w-full sm:max-w-6xl bg-card/95 backdrop-blur-2xl border-border/30 h-[96dvh] sm:h-auto sm:max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-2xl p-4 sm:p-6 flex flex-col inset-x-0 bottom-0 top-auto sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2">
+                <DialogContent className="w-full max-w-full sm:max-w-6xl bg-card/95 backdrop-blur-2xl border-border/30 h-[92dvh] sm:h-auto sm:max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-2xl p-4 sm:p-6 flex flex-col left-0 right-0 bottom-0 top-auto translate-x-0 translate-y-0 sm:left-1/2 sm:top-1/2 sm:bottom-auto sm:right-auto sm:-translate-x-1/2 sm:-translate-y-1/2 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
                     {/* Mobile drag handle */}
                     <div className="flex justify-center -mt-2 mb-2 sm:hidden">
                         <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
                     </div>
                     <DialogHeader>
                         {lead && (
-                            <div className="flex items-center gap-4 mb-2">
-                                {(() => {
-                                    const photo = getMediaUrl(lead.photoUrl);
-                                    return (
-                                        <div
-                                            className={`w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center font-bold text-xl border ${
-                                                photo
-                                                    ? 'bg-muted border-border/30 cursor-pointer hover:opacity-80 transition-opacity'
-                                                    : getCompanyAvatarColor(lead.name)
-                                            }`}
-                                            onClick={() => { if (photo) setIsImageOpen(true); }}
-                                        >
-                                            {photo ? (
-                                                <img src={photo} alt={lead.name} className="w-full h-full object-cover"
-                                                    onError={(e) => {
-                                                        const target = e.target as HTMLImageElement;
-                                                        target.style.display = 'none';
-                                                        target.nextElementSibling?.classList.remove('hidden');
-                                                    }}
-                                                />
-                                            ) : null}
-                                            <span className={photo ? 'hidden' : ''}>
-                                                {getCompanyInitials(lead.name)}
-                                            </span>
-                                        </div>
-                                    );
-                                })()}
-                                <div className="flex-1 min-w-0">
-                                    <DialogTitle className="text-xl font-semibold truncate">{lead.name}</DialogTitle>
-                                    <div className="flex items-center gap-2 flex-wrap mt-1">
-                                        <p className="text-xs sm:text-sm text-muted-foreground truncate max-w-[200px]">{lead.address || 'Sem endereço'}</p>
-                                        {(lead.address || lead.name) && (
-                                            <div className="flex items-center gap-1">
-                                                <button
-                                                    type="button"
-                                                    onClick={openGoogleMaps}
-                                                    className="px-2 py-0.5 rounded bg-primary/10 hover:bg-primary/20 text-primary transition-colors text-[11px] font-medium flex items-center gap-1"
-                                                    title="Abrir no Google Maps"
-                                                >
-                                                    <MapPin className="w-3 h-3" /> Maps
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={openWaze}
-                                                    className="px-2 py-0.5 rounded bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 transition-colors text-[11px] font-medium flex items-center gap-1"
-                                                    title="Abrir no Waze"
-                                                >
-                                                    <Navigation className="w-3 h-3" /> Waze
-                                                </button>
-                                            </div>
-                                        )}
-                                        {lead.phone && (
-                                            <a
-                                                href={`tel:${lead.phone}`}
-                                                className="px-2 py-0.5 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-colors text-[11px] font-medium flex items-center gap-1"
-                                                title="Ligar agora"
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    {(() => {
+                                        const photo = getMediaUrl(lead.photoUrl);
+                                        return (
+                                            <div
+                                                className={`w-14 h-14 sm:w-20 sm:h-20 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center font-bold text-lg sm:text-xl border ${
+                                                    photo
+                                                        ? 'bg-muted border-border/30 cursor-pointer hover:opacity-80 transition-opacity'
+                                                        : getCompanyAvatarColor(lead.name)
+                                                }`}
+                                                onClick={() => { if (photo) setIsImageOpen(true); }}
                                             >
-                                                <Phone className="w-3 h-3" /> Ligar
-                                            </a>
-                                        )}
+                                                {photo ? (
+                                                    <img src={photo} alt={lead.name} className="w-full h-full object-cover"
+                                                        onError={(e) => {
+                                                            const target = e.target as HTMLImageElement;
+                                                            target.style.display = 'none';
+                                                            target.nextElementSibling?.classList.remove('hidden');
+                                                        }}
+                                                    />
+                                                ) : null}
+                                                <span className={photo ? 'hidden' : ''}>
+                                                    {getCompanyInitials(lead.name)}
+                                                </span>
+                                            </div>
+                                        );
+                                    })()}
+                                    <div className="flex-1 min-w-0">
+                                        <DialogTitle className="text-lg sm:text-xl font-semibold truncate">{lead.name}</DialogTitle>
+                                        <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                                            <p className="text-xs sm:text-sm text-muted-foreground truncate max-w-[150px] sm:max-w-[200px]">{lead.address || 'Sem endereço'}</p>
+                                            {(lead.address || lead.name) && (
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={openGoogleMaps}
+                                                        className="px-2 py-0.5 rounded bg-primary/10 hover:bg-primary/20 text-primary transition-colors text-[11px] font-medium flex items-center gap-1"
+                                                        title="Abrir no Google Maps"
+                                                    >
+                                                        <MapPin className="w-3 h-3" /> Maps
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={openWaze}
+                                                        className="px-2 py-0.5 rounded bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 transition-colors text-[11px] font-medium flex items-center gap-1"
+                                                        title="Abrir no Waze"
+                                                    >
+                                                        <Navigation className="w-3 h-3" /> Waze
+                                                    </button>
+                                                </div>
+                                            )}
+                                            {lead.phone && (
+                                                <a
+                                                    href={`tel:${lead.phone}`}
+                                                    className="px-2 py-0.5 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-colors text-[11px] font-medium flex items-center gap-1"
+                                                    title="Ligar agora"
+                                                >
+                                                    <Phone className="w-3 h-3" /> Ligar
+                                                </a>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                                 {/* Status Buttons */}
-                                <div className="flex flex-col gap-2 flex-shrink-0 items-end">
-                                    <div className="flex gap-2">
+                                <div className="flex flex-col gap-2 flex-shrink-0 sm:items-end w-full sm:w-auto">
+                                    <div className="grid grid-cols-3 sm:flex gap-1.5 sm:gap-2 w-full">
                                         <Button type="button" variant="outline" size="sm"
-                                            className="bg-red-500/10 text-red-500 hover:bg-red-500/20 border-red-500/20"
+                                            className="bg-red-500/10 text-red-500 hover:bg-red-500/20 border-red-500/20 text-xs px-2 py-1 h-8 sm:h-9"
                                             onClick={() => handleStatusChange('lost')}>
-                                            <ThumbsDown className="w-4 h-4 mr-1" /> Perdido
+                                            <ThumbsDown className="w-3.5 h-3.5 mr-1" /> Perdido
                                         </Button>
                                         <Button type="button" variant="outline" size="sm"
-                                            className="bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 border-purple-500/20"
+                                            className="bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 border-purple-500/20 text-xs px-2 py-1 h-8 sm:h-9"
                                             onClick={handleMeetingSchedule}>
-                                            <CalendarCheck className="w-4 h-4 mr-1" /> Reunião
+                                            <CalendarCheck className="w-3.5 h-3.5 mr-1" /> Reunião
                                         </Button>
                                         <Button type="button" variant="outline" size="sm"
-                                            className="bg-green-500/10 text-green-500 hover:bg-green-500/20 border-green-500/20"
+                                            className="bg-green-500/10 text-green-500 hover:bg-green-500/20 border-green-500/20 text-xs px-2 py-1 h-8 sm:h-9"
                                             onClick={() => handleStatusChange('won')}>
-                                            <ThumbsUp className="w-4 h-4 mr-1" /> Ganho
+                                            <ThumbsUp className="w-3.5 h-3.5 mr-1" /> Ganho
                                         </Button>
                                     </div>
                                     {lead?.phone && (
                                         <Button type="button" variant="outline" size="sm"
-                                            className="w-full bg-primary/10 text-primary hover:bg-primary/20 border-primary/20"
+                                            className="w-full bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 text-xs h-8 sm:h-9"
                                             onClick={() => setShowFirstContact(true)}>
-                                            <MessageSquarePlus className="w-4 h-4 mr-1" /> Primeiro Contato
+                                            <MessageSquarePlus className="w-3.5 h-3.5 mr-1.5" /> Primeiro Contato
                                         </Button>
                                     )}
                                 </div>

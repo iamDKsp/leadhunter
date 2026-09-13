@@ -24,7 +24,7 @@ export function Header({ title, subtitle, onAddLead, user, onLogout, onToggleMob
   const navigate = useNavigate();
 
   return (
-    <header className="flex items-center justify-between px-3 sm:px-6 h-14 sm:h-16 border-b border-border/30 bg-card/75 backdrop-blur-md sticky top-0 z-30 transition-all duration-300 select-none">
+    <header className="flex items-center justify-between px-3 sm:px-6 pt-[env(safe-area-inset-top,0px)] h-[calc(3.5rem+env(safe-area-inset-top,0px))] sm:h-16 border-b border-border/30 bg-card/85 backdrop-blur-md sticky top-0 z-30 transition-all duration-300 select-none">
       <div className="flex items-center gap-2.5 min-w-0">
         {onToggleMobileMenu && (
           <button

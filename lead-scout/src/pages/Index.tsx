@@ -310,7 +310,7 @@ const Index = () => {
   };
 
   return (
-    <div className="flex h-screen bg-background text-foreground overflow-hidden">
+    <div className="flex h-[100dvh] min-h-[100dvh] max-h-[100dvh] bg-background text-foreground overflow-hidden">
       <Sidebar
         folders={folders}
         activeView={activeView}
@@ -342,7 +342,9 @@ const Index = () => {
           "flex-1 overflow-auto custom-scrollbar bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-background to-background",
           activeView === 'conversas'
             ? (isChatActive ? "p-0 pb-0" : "p-0 pb-16 md:pb-0")
-            : "p-3 sm:p-4 md:p-6 pb-24 md:pb-6"
+            : activeView === 'leads'
+              ? "p-2 sm:p-4 md:p-6 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-6 overflow-hidden flex flex-col"
+              : "p-3 sm:p-4 md:p-6 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-6"
         )}>
           {activeView === 'search' ? (
             <GoogleMapsSearch onLeadAdded={(newLead) => {

@@ -65,7 +65,7 @@ const LeadsTable = ({
 
     if (isMobile) {
         return (
-            <div className="space-y-4 pb-20">
+            <div className="space-y-3 pb-4">
                 {leads.map((lead) => {
                     const stage = getStage(lead.stageId);
                     return (

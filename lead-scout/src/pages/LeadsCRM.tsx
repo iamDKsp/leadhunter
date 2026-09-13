@@ -50,9 +50,7 @@ const LeadsCRM = ({ user }: LeadsCRMProps) => {
     } = useLeads('ACTIVE');
     const isMobile = useIsMobile();
 
-    const [viewMode, setViewMode] = useState<ViewMode>(() => {
-        return window.innerWidth < 768 ? 'list' : 'kanban';
-    });
+    const [viewMode, setViewMode] = useState<ViewMode>('kanban');
 
     const [stages, setStages] = useState<Stage[]>(defaultStages);
     const [selectedMobileStageId, setSelectedMobileStageId] = useState<string>('prospeccao');
@@ -451,7 +449,7 @@ const LeadsCRM = ({ user }: LeadsCRMProps) => {
             {/* Mobile Floating Action Button (FAB) */}
             <button
                 onClick={handleOpenNewLead}
-                className="fixed bottom-20 right-4 z-30 md:hidden w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-[0_4px_25px_rgba(16,185,129,0.4)] flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-200"
+                className="fixed bottom-[calc(5.2rem+env(safe-area-inset-bottom,0px))] right-4 z-30 md:hidden w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-[0_4px_25px_rgba(16,185,129,0.4)] flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-200"
                 aria-label="Criar novo lead"
             >
                 <Plus className="w-7 h-7" />

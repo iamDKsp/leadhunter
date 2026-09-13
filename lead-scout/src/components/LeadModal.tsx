@@ -77,7 +77,11 @@ export function LeadModal({ isOpen, onClose, onSave, editingLead }: LeadModalPro
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-card border-border max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-full sm:max-w-2xl max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-xl bottom-0 top-auto left-0 right-0 translate-x-0 translate-y-0 sm:left-1/2 sm:top-1/2 sm:bottom-auto sm:right-auto sm:-translate-x-1/2 sm:-translate-y-1/2 p-5 sm:p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] bg-card border-border">
+        {/* Mobile drag handle */}
+        <div className="flex justify-center -mt-2 mb-2 sm:hidden">
+          <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
+        </div>
         <DialogHeader>
           <DialogTitle className="font-display text-xl">
             {editingLead ? 'Editar Lead' : 'Novo Lead'}
