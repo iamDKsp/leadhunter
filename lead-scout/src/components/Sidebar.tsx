@@ -68,21 +68,10 @@ export function Sidebar({
 
   return (
     <>
-      {/* Mobile Backdrop */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300"
-          onClick={onCloseMobile}
-        />
-      )}
-
       <aside className={cn(
-        "bg-card/95 backdrop-blur-xl border-r border-border/30 flex flex-col transition-all duration-300 fixed left-0 top-0 h-screen z-50",
-        // Mobile positioning: slide-out drawer
-        "w-64",
-        mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full",
-        // Desktop positioning: fixed sidebar
-        "md:translate-x-0",
+        "bg-card/95 backdrop-blur-xl border-r border-border/30 flex-col transition-all duration-300 fixed left-0 top-0 h-screen z-50",
+        // Desktop only: mobile uses MobileBottomNav & MobileMoreSheet
+        "hidden md:flex",
         isCollapsed ? "md:w-20" : "md:w-64"
       )}>
         {/* Logo */}

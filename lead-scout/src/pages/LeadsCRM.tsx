@@ -3,9 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Lead, Stage } from '@/types/lead';
 import KanbanBoard from '@/components/crm/KanbanBoard';
+import KanbanCard from '@/components/crm/KanbanCard';
 import LeadsTable from '@/components/crm/LeadsTable';
 import StageEditor from '@/components/crm/StageEditor';
 import LeadFormModal from '@/components/crm/LeadFormModal';
+import { MobileStageTabs } from '@/components/crm/MobileStageTabs';
 import { LeadAssignmentModal } from '@/components/LeadAssignmentModal';
 import { LeadFilterModal, FilterState } from '@/components/crm/LeadFilterModal';
 import { BulkActionsToolbar } from '@/components/crm/BulkActionsToolbar';
@@ -50,6 +52,7 @@ const LeadsCRM = ({ user }: LeadsCRMProps) => {
     });
 
     const [stages, setStages] = useState<Stage[]>(defaultStages);
+    const [selectedMobileStageId, setSelectedMobileStageId] = useState<string>('prospeccao');
 
     // Load stages from API
     useEffect(() => {
@@ -58,6 +61,7 @@ const LeadsCRM = ({ user }: LeadsCRMProps) => {
                 const fetchedStages = await stagesApi.getAll();
                 if (fetchedStages && fetchedStages.length > 0) {
                     setStages(fetchedStages);
+                    setSelectedMobileStageId(prev => fetchedStages.some(s => s.id === prev) ? prev : fetchedStages[0].id);
                 }
             } catch (error) {
                 console.error("Failed to load stages", error);
@@ -317,7 +321,7 @@ const LeadsCRM = ({ user }: LeadsCRMProps) => {
                         Etapas
                     </Button>
 
-                    <Button onClick={handleOpenNewLead}>
+                    <Button onClick={handleOpenNewLead} className="hidden md:inline-flex">
                         <Plus className="w-4 h-4 mr-2" />
                         Novo Lead
                     </Button>
@@ -339,16 +343,67 @@ const LeadsCRM = ({ user }: LeadsCRMProps) => {
                     </div>
                 )}
                 {viewMode === 'kanban' ? (
-                    <KanbanBoard
-                        leads={filteredLeads}
-                        stages={stages}
-                        onLeadMove={handleLeadMove}
-                        onEditStage={() => setStageEditorOpen(true)}
-                        onViewLead={handleViewLead}
-                        onAssignLead={handleAssignLead}
-                        onAddStage={handleAddStage}
-                        onLeadStageAdvance={(leadId, newStageId) => updateLead(leadId, { stageId: newStageId })}
-                    />
+                    <>
+                        {/* Desktop Multi-column Kanban */}
+                        <div className="hidden md:block h-full">
+                            <KanbanBoard
+                                leads={filteredLeads}
+                                stages={stages}
+                                onLeadMove={handleLeadMove}
+                                onEditStage={() => setStageEditorOpen(true)}
+                                onViewLead={handleViewLead}
+                                onAssignLead={handleAssignLead}
+                                onAddStage={handleAddStage}
+                                onLeadStageAdvance={(leadId, newStageId) => updateLead(leadId, { stageId: newStageId })}
+                            />
+                        </div>
+
+                        {/* Mobile App-Style Tabbed Stage Feed */}
+                        <div className="block md:hidden h-full flex flex-col overflow-hidden">
+                            <MobileStageTabs
+                                stages={stages}
+                                leads={filteredLeads}
+                                activeStageId={selectedMobileStageId}
+                                onSelectStage={setSelectedMobileStageId}
+                                onOpenNewLead={handleOpenNewLead}
+                            />
+                            <div className="flex-1 overflow-y-auto space-y-3 pb-24 custom-scrollbar px-0.5">
+                                {(() => {
+                                    const currentStageLeads = filteredLeads.filter(
+                                        l => (l.stageId || 'prospeccao') === selectedMobileStageId
+                                    );
+                                    if (currentStageLeads.length === 0) {
+                                        return (
+                                            <div className="p-8 text-center bg-card/40 rounded-2xl border border-dashed border-border/40 mt-4 animate-fade-in">
+                                                <p className="text-sm text-muted-foreground mb-3 font-medium">
+                                                    Nenhum lead nesta etapa
+                                                </p>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={handleOpenNewLead}
+                                                    className="rounded-xl border-primary/30 text-primary hover:bg-primary/10"
+                                                >
+                                                    <Plus className="w-4 h-4 mr-1.5" /> Adicionar Lead
+                                                </Button>
+                                            </div>
+                                        );
+                                    }
+                                    return currentStageLeads.map(lead => (
+                                        <KanbanCard
+                                            key={lead.id}
+                                            lead={lead}
+                                            isDragging={false}
+                                            onView={() => handleViewLead(lead)}
+                                            onAssign={() => handleAssignLead(lead)}
+                                            stages={stages}
+                                            onLeadStageAdvance={(leadId, newStageId) => updateLead(leadId, { stageId: newStageId })}
+                                        />
+                                    ));
+                                })()}
+                            </div>
+                        </div>
+                    </>
                 ) : (
                     <div className="overflow-auto h-full">
                         <LeadsTable
@@ -365,6 +420,15 @@ const LeadsCRM = ({ user }: LeadsCRMProps) => {
                     </div>
                 )}
             </div>
+
+            {/* Mobile Floating Action Button (FAB) */}
+            <button
+                onClick={handleOpenNewLead}
+                className="fixed bottom-20 right-4 z-30 md:hidden w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-[0_4px_25px_rgba(16,185,129,0.4)] flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-200"
+                aria-label="Criar novo lead"
+            >
+                <Plus className="w-7 h-7" />
+            </button>
 
             <StageEditor
                 open={stageEditorOpen}

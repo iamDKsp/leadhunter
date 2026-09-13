@@ -26,6 +26,8 @@ import { User } from '@/types/auth'; // Import User type
 import { canViewPage } from '@/utils/permissions'; // Import permission helper
 import { SettingsModal } from '@/components/SettingsModal';
 import { useWhatsApp } from '@/context/WhatsAppContext'; // Import useWhatsApp hook
+import { MobileBottomNav } from '@/components/navigation/MobileBottomNav';
+import { MobileMoreSheet } from '@/components/navigation/MobileMoreSheet';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -110,6 +112,7 @@ const Index = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [activeChat, setActiveChat] = useState<{ number: string, name: string } | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
 
   const filteredLeads = useMemo(() => {
     return leads.filter((lead) => {
@@ -331,12 +334,12 @@ const Index = () => {
           onAddLead={handleAddLead}
           user={user}
           onLogout={handleLogout}
-          onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          onToggleMobileMenu={() => setIsMoreSheetOpen(true)}
         />
 
         <div className={cn(
           "flex-1 overflow-auto custom-scrollbar bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-background to-background",
-          activeView === 'conversas' ? "p-0" : "p-3 sm:p-4 md:p-6"
+          activeView === 'conversas' ? "p-0 pb-16 md:pb-0" : "p-3 sm:p-4 md:p-6 pb-24 md:pb-6"
         )}>
           {activeView === 'search' ? (
             <GoogleMapsSearch onLeadAdded={(newLead) => {
@@ -353,6 +356,24 @@ const Index = () => {
         </div>
       </main>
 
+      {/* Mobile Bottom Navigation Bar */}
+      <MobileBottomNav
+        activeView={activeView}
+        onViewChange={handleViewChange}
+        onOpenMore={() => setIsMoreSheetOpen(true)}
+      />
+
+      {/* Mobile More Bottom Sheet */}
+      <MobileMoreSheet
+        isOpen={isMoreSheetOpen}
+        onClose={() => setIsMoreSheetOpen(false)}
+        activeView={activeView}
+        onViewChange={handleViewChange}
+        user={user}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onLogout={handleLogout}
+      />
+
       <LeadModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -366,7 +387,6 @@ const Index = () => {
         targetNumber={activeChat?.number}
         targetName={activeChat?.name}
       />
-
 
       <SettingsModal
         open={isSettingsOpen}
