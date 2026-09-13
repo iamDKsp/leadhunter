@@ -27,9 +27,13 @@ const TokenHandler = () => {
   return null;
 };
 
+import { canViewPage } from "@/utils/permissions";
+
 // Global notification overlay — must be inside WhatsAppProvider + BrowserRouter
 const GlobalNotifications = () => {
   const { pendingNotifications, dismissNotification, dismissAllNotifications } = useWhatsApp();
+
+  if (!canViewPage(null, 'conversas')) return null;
 
   return (
     <IncomingMessageNotification

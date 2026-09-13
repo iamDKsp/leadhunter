@@ -27,16 +27,20 @@ interface Permission {
     canViewAllLeads: boolean;
     canViewOwnLeads: boolean;
     canManageLeads: boolean;
+    canDeleteLeads: boolean;
     canAssignLeads: boolean;
     canImportLeads: boolean;
     canExportLeads: boolean;
     canViewCRM: boolean;
     canMoveCards: boolean;
     canManageStages: boolean;
+    canBulkActions: boolean;
     canViewDashboard: boolean;
+    canViewAnalytics: boolean;
     canViewCosts: boolean;
     canViewChat: boolean;
     canSendMessage: boolean;
+    canSendMedia: boolean;
     canDeleteMessages: boolean;
     canViewAllChats: boolean;
     canManageConnections: boolean;
@@ -75,16 +79,20 @@ const DEFAULT_PERMISSIONS: Omit<Permission, 'id'> = {
     canViewAllLeads: false,
     canViewOwnLeads: true,
     canManageLeads: false,
+    canDeleteLeads: false,
     canAssignLeads: false,
     canImportLeads: false,
     canExportLeads: false,
     canViewCRM: true,
     canMoveCards: true,
     canManageStages: false,
+    canBulkActions: false,
     canViewDashboard: true,
+    canViewAnalytics: false,
     canViewCosts: false,
     canViewChat: false,
     canSendMessage: false,
+    canSendMedia: false,
     canDeleteMessages: false,
     canViewAllChats: false,
     canManageConnections: false,
@@ -106,7 +114,8 @@ const PERMISSION_LABELS: Record<string, { label: string; description: string; ca
     canSearchLeads: { label: 'Pesquisar Leads', description: 'Pode pesquisar novos leads na API do Google', category: 'leads' },
     canViewAllLeads: { label: 'Ver Todos Leads', description: 'Pode visualizar todos os leads do sistema', category: 'leads' },
     canViewOwnLeads: { label: 'Ver Próprios Leads', description: 'Pode ver apenas leads atribuídos a si', category: 'leads' },
-    canManageLeads: { label: 'Gerenciar Leads', description: 'Pode criar, editar e excluir leads', category: 'leads' },
+    canManageLeads: { label: 'Gerenciar Leads', description: 'Pode criar e editar dados de leads', category: 'leads' },
+    canDeleteLeads: { label: 'Excluir Leads', description: 'Pode remover leads definitivamente do sistema', category: 'leads' },
     canAssignLeads: { label: 'Atribuir Leads', description: 'Pode atribuir leads a vendedores', category: 'leads' },
     canImportLeads: { label: 'Importar Leads', description: 'Pode importar leads via CSV/Excel', category: 'leads' },
     canExportLeads: { label: 'Exportar Leads', description: 'Pode exportar leads para CSV/Excel', category: 'leads' },
@@ -115,10 +124,12 @@ const PERMISSION_LABELS: Record<string, { label: string; description: string; ca
     canViewCRM: { label: 'Acessar CRM', description: 'Pode visualizar o módulo CRM', category: 'crm' },
     canMoveCards: { label: 'Mover Cards', description: 'Pode mover cards entre colunas', category: 'crm' },
     canManageStages: { label: 'Gerenciar Etapas', description: 'Pode criar e editar funis e etapas', category: 'crm' },
+    canBulkActions: { label: 'Ações em Massa', description: 'Pode executar ações em lote com múltiplos cards', category: 'crm' },
 
     // Chat
     canViewChat: { label: 'Acessar Chat', description: 'Pode usar o chat WhatsApp', category: 'chat' },
-    canSendMessage: { label: 'Enviar Mensagens', description: 'Pode enviar mensagens pelo chat', category: 'chat' },
+    canSendMessage: { label: 'Enviar Mensagens', description: 'Pode enviar mensagens de texto pelo chat', category: 'chat' },
+    canSendMedia: { label: 'Enviar Áudios e Mídia', description: 'Pode enviar mensagens de voz, imagens e arquivos', category: 'chat' },
     canDeleteMessages: { label: 'Apagar Mensagens', description: 'Pode apagar mensagens do histórico', category: 'chat' },
     canViewAllChats: { label: 'Ver Todos Chats', description: 'Pode ver chats de outros usuários', category: 'chat' },
     canManageConnections: { label: 'Gerenciar Conexões', description: 'Pode conectar/desconectar WhatsApp', category: 'chat' },
@@ -126,6 +137,7 @@ const PERMISSION_LABELS: Record<string, { label: string; description: string; ca
 
     // Modules/System
     canViewDashboard: { label: 'Acessar Dashboard', description: 'Pode visualizar o dashboard', category: 'system' },
+    canViewAnalytics: { label: 'Acessar Análises', description: 'Pode visualizar métricas e taxas de conversão', category: 'system' },
     canViewCosts: { label: 'Ver Custos', description: 'Pode visualizar custos de API', category: 'system' },
     canViewSystemLogs: { label: 'Ver Logs', description: 'Pode visualizar logs do sistema', category: 'system' },
     canManageSettings: { label: 'Configurações', description: 'Pode alterar configurações gerais', category: 'system' },

@@ -20,6 +20,8 @@ import { stages as stagesApi } from '@/services/api';
 import { useEffect } from 'react';
 import { PullToRefresh } from '@/components/common/PullToRefresh';
 import { Skeleton } from '@/components/ui/skeleton';
+import { motion, AnimatePresence } from 'framer-motion';
+import { pageTransition } from '@/lib/motion';
 
 const defaultStages: Stage[] = [
     { id: 'prospeccao', name: 'Prospecção', color: '#3b82f6', order: 0 },
@@ -291,28 +293,45 @@ const LeadsCRM = ({ user }: LeadsCRMProps) => {
 
                 <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                     {/* View Toggle */}
-                    <div className="flex items-center bg-card/60 border border-border/30 rounded-lg p-1">
-                        <button
+                    <div className="flex items-center bg-card/60 border border-border/30 rounded-lg p-1 relative">
+                        <motion.button
+                            whileTap={{ scale: 0.95 }}
                             onClick={() => setViewMode('kanban')}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-all ${viewMode === 'kanban'
-                                ? 'bg-primary text-primary-foreground'
+                            className={`relative flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors z-10 ${viewMode === 'kanban'
+                                ? 'text-primary-foreground'
                                 : 'text-muted-foreground hover:text-foreground'
                                 }`}
                         >
+                            {viewMode === 'kanban' && (
+                                <motion.div
+                                    layoutId="viewModePill"
+                                    className="absolute inset-0 bg-primary rounded-md shadow-sm -z-10"
+                                    transition={{ type: "spring", stiffness: 500, damping: 32 }}
+                                />
+                            )}
                             <LayoutGrid className="w-4 h-4" />
                             Kanban
-                        </button>
-                        <button
+                        </motion.button>
+                        <motion.button
+                            whileTap={{ scale: 0.95 }}
                             onClick={() => setViewMode('list')}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-all ${viewMode === 'list'
-                                ? 'bg-primary text-primary-foreground'
+                            className={`relative flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors z-10 ${viewMode === 'list'
+                                ? 'text-primary-foreground'
                                 : 'text-muted-foreground hover:text-foreground'
                                 }`}
                         >
+                            {viewMode === 'list' && (
+                                <motion.div
+                                    layoutId="viewModePill"
+                                    className="absolute inset-0 bg-primary rounded-md shadow-sm -z-10"
+                                    transition={{ type: "spring", stiffness: 500, damping: 32 }}
+                                />
+                            )}
                             <List className="w-4 h-4" />
                             Lista
-                        </button>
+                        </motion.button>
                     </div>
+
 
                     <Button
                         variant="outline"
@@ -344,93 +363,110 @@ const LeadsCRM = ({ user }: LeadsCRMProps) => {
                         />
                     </div>
                 )}
-                {viewMode === 'kanban' ? (
-                    <>
-                        {/* Desktop Multi-column Kanban */}
-                        <div className="hidden md:block h-full">
-                            <KanbanBoard
+                <AnimatePresence mode="wait" initial={false}>
+                    {viewMode === 'kanban' ? (
+                        <motion.div
+                            key="kanban-view"
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -6 }}
+                            transition={{ duration: 0.2 }}
+                            className="h-full flex flex-col overflow-hidden"
+                        >
+                            {/* Desktop Multi-column Kanban */}
+                            <div className="hidden md:block h-full">
+                                <KanbanBoard
+                                    leads={filteredLeads}
+                                    stages={stages}
+                                    onLeadMove={handleLeadMove}
+                                    onEditStage={() => setStageEditorOpen(true)}
+                                    onViewLead={handleViewLead}
+                                    onAssignLead={handleAssignLead}
+                                    onAddStage={handleAddStage}
+                                    onLeadStageAdvance={(leadId, newStageId) => updateLead(leadId, { stageId: newStageId })}
+                                />
+                            </div>
+
+                            {/* Mobile App-Style Tabbed Stage Feed */}
+                            <div className="block md:hidden h-full flex flex-col overflow-hidden">
+                                <MobileStageTabs
+                                    stages={stages}
+                                    leads={filteredLeads}
+                                    activeStageId={selectedMobileStageId}
+                                    onSelectStage={setSelectedMobileStageId}
+                                    onOpenNewLead={handleOpenNewLead}
+                                />
+                                <PullToRefresh onRefresh={refresh} className="flex-1 overflow-hidden">
+                                    <div className="flex-1 overflow-y-auto space-y-3 pb-24 custom-scrollbar px-0.5 h-full">
+                                        {(() => {
+                                            if (isLoading) {
+                                                return (
+                                                    <div className="flex items-center justify-center py-8">
+                                                        <CyberRadarLoader size="sm" label="BUSCANDO LEADS..." />
+                                                    </div>
+                                                );
+                                            }
+
+                                            const currentStageLeads = filteredLeads.filter(
+                                                l => (l.stageId || 'prospeccao') === selectedMobileStageId
+                                            );
+                                            if (currentStageLeads.length === 0) {
+                                                return (
+                                                    <div className="p-8 text-center bg-card/40 rounded-2xl border border-dashed border-border/40 mt-4 animate-fade-in">
+                                                        <p className="text-sm text-muted-foreground mb-3 font-medium">
+                                                            Nenhum lead nesta etapa
+                                                        </p>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={handleOpenNewLead}
+                                                            className="rounded-xl border-primary/30 text-primary hover:bg-primary/10 active-press"
+                                                        >
+                                                            <Plus className="w-4 h-4 mr-1.5" /> Adicionar Lead
+                                                        </Button>
+                                                    </div>
+                                                );
+                                            }
+                                            return currentStageLeads.map(lead => (
+                                                <KanbanCard
+                                                    key={lead.id}
+                                                    lead={lead}
+                                                    isDragging={false}
+                                                    onView={() => handleViewLead(lead)}
+                                                    onAssign={() => handleAssignLead(lead)}
+                                                    stages={stages}
+                                                    onLeadStageAdvance={(leadId, newStageId) => updateLead(leadId, { stageId: newStageId })}
+                                                />
+                                            ));
+                                        })()}
+                                    </div>
+                                </PullToRefresh>
+                            </div>
+                        </motion.div>
+                    ) : (
+                        <motion.div
+                            key="list-view"
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -6 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-auto h-full"
+                        >
+                            <LeadsTable
                                 leads={filteredLeads}
                                 stages={stages}
-                                onLeadMove={handleLeadMove}
-                                onEditStage={() => setStageEditorOpen(true)}
                                 onViewLead={handleViewLead}
-                                onAssignLead={handleAssignLead}
-                                onAddStage={handleAddStage}
-                                onLeadStageAdvance={(leadId, newStageId) => updateLead(leadId, { stageId: newStageId })}
+                                onEditLead={handleEditLead}
+                                onDeleteLead={handleDeleteLead}
+                                selectedLeads={selectedLeads}
+                                onSelectLead={handleSelectLead}
+                                onSelectAll={handleSelectAll}
+                                selectionEnabled={hasManagePermissions}
                             />
-                        </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
-                        {/* Mobile App-Style Tabbed Stage Feed */}
-                        <div className="block md:hidden h-full flex flex-col overflow-hidden">
-                            <MobileStageTabs
-                                stages={stages}
-                                leads={filteredLeads}
-                                activeStageId={selectedMobileStageId}
-                                onSelectStage={setSelectedMobileStageId}
-                                onOpenNewLead={handleOpenNewLead}
-                            />
-                            <PullToRefresh onRefresh={refresh} className="flex-1 overflow-hidden">
-                                <div className="flex-1 overflow-y-auto space-y-3 pb-24 custom-scrollbar px-0.5 h-full">
-                                    {(() => {
-                                        if (isLoading) {
-                                            return (
-                                                <div className="flex items-center justify-center py-8">
-                                                    <CyberRadarLoader size="sm" label="BUSCANDO LEADS..." />
-                                                </div>
-                                            );
-                                        }
-
-                                        const currentStageLeads = filteredLeads.filter(
-                                            l => (l.stageId || 'prospeccao') === selectedMobileStageId
-                                        );
-                                        if (currentStageLeads.length === 0) {
-                                            return (
-                                                <div className="p-8 text-center bg-card/40 rounded-2xl border border-dashed border-border/40 mt-4 animate-fade-in">
-                                                    <p className="text-sm text-muted-foreground mb-3 font-medium">
-                                                        Nenhum lead nesta etapa
-                                                    </p>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={handleOpenNewLead}
-                                                        className="rounded-xl border-primary/30 text-primary hover:bg-primary/10 active-press"
-                                                    >
-                                                        <Plus className="w-4 h-4 mr-1.5" /> Adicionar Lead
-                                                    </Button>
-                                                </div>
-                                            );
-                                        }
-                                        return currentStageLeads.map(lead => (
-                                            <KanbanCard
-                                                key={lead.id}
-                                                lead={lead}
-                                                isDragging={false}
-                                                onView={() => handleViewLead(lead)}
-                                                onAssign={() => handleAssignLead(lead)}
-                                                stages={stages}
-                                                onLeadStageAdvance={(leadId, newStageId) => updateLead(leadId, { stageId: newStageId })}
-                                            />
-                                        ));
-                                    })()}
-                                </div>
-                            </PullToRefresh>
-                        </div>
-                    </>
-                ) : (
-                    <div className="overflow-auto h-full">
-                        <LeadsTable
-                            leads={filteredLeads}
-                            stages={stages}
-                            onViewLead={handleViewLead}
-                            onEditLead={handleEditLead}
-                            onDeleteLead={handleDeleteLead}
-                            selectedLeads={selectedLeads}
-                            onSelectLead={handleSelectLead}
-                            onSelectAll={handleSelectAll}
-                            selectionEnabled={hasManagePermissions}
-                        />
-                    </div>
-                )}
             </div>
 
             {/* Mobile Floating Action Button (FAB) */}

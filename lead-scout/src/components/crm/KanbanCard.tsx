@@ -7,6 +7,7 @@ import api from '@/services/api';
 import { toast } from 'sonner';
 import { getSelectedTemplate } from './FirstContactTemplateModal';
 import { getMediaUrl, getCompanyInitials, getCompanyAvatarColor } from '@/utils/media';
+import { hasPermission } from '@/utils/permissions';
 
 interface KanbanCardProps {
     lead: Lead;
@@ -23,6 +24,7 @@ const KanbanCard = ({ lead, isDragging, onView, onAssign, stages = [], onLeadSta
     const [isQuickSending, setIsQuickSending] = useState(false);
     const navigate = useNavigate();
     const resolvedPhotoUrl = getMediaUrl(lead.photoUrl);
+    const canChat = hasPermission(null, 'canViewChat');
 
     const handleChatClick = async (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -115,7 +117,7 @@ const KanbanCard = ({ lead, isDragging, onView, onAssign, stages = [], onLeadSta
         <>
             <div
                 onClick={onView}
-                className={`bg-card/80 backdrop-blur-sm border rounded-xl p-3 sm:p-3 cursor-pointer select-none active:scale-[0.985] transition-all ${isDragging ? 'shadow-lg shadow-primary/20 border-primary/50' : 'hover:border-primary/30'
+                className={`bg-card/80 backdrop-blur-sm border rounded-xl p-3 sm:p-3 cursor-pointer select-none active:scale-[0.98] card-hover-lift transition-all duration-200 ${isDragging ? 'shadow-xl shadow-primary/20 border-primary/60 scale-[1.02]' : 'hover:border-primary/40 hover:shadow-md'
                     } ${lead.status === 'won'
                         ? 'border-green-500/50'
                         : lead.status === 'lost'
@@ -124,6 +126,7 @@ const KanbanCard = ({ lead, isDragging, onView, onAssign, stages = [], onLeadSta
                                 ? 'border-purple-500/50'
                                 : 'border-border/30'
                     }`}
+
                 style={
                     lead.status === 'won'
                         ? { boxShadow: '0 0 15px rgba(34, 197, 94, 0.35), 0 0 40px rgba(34, 197, 94, 0.1), inset 0 0 20px rgba(34, 197, 94, 0.05)' }
@@ -217,29 +220,32 @@ const KanbanCard = ({ lead, isDragging, onView, onAssign, stages = [], onLeadSta
                             </button>
                         )}
 
-                        {/* ⚡ Quick Send */}
-                        <button
-                            onClick={handleQuickSend}
-                            disabled={!lead.phone || isQuickSending}
-                            className={`w-8 h-8 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center active:scale-90 transition-all ${lead.phone
-                                ? 'text-muted-foreground hover:text-yellow-400 hover:bg-yellow-400/10'
-                                : 'text-muted-foreground/30 cursor-not-allowed'}`}
-                            title={lead.phone ? 'Enviar template selecionado' : 'Sem telefone'}
-                        >
-                            <Zap className={`w-4 h-4 sm:w-3 sm:h-3 ${isQuickSending ? 'animate-pulse text-yellow-400' : ''}`} />
-                        </button>
+                        {/* ⚡ Quick Send & Chat (WhatsApp permissions required) */}
+                        {canChat && (
+                            <>
+                                <button
+                                    onClick={handleQuickSend}
+                                    disabled={!lead.phone || isQuickSending}
+                                    className={`w-8 h-8 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center active:scale-90 transition-all ${lead.phone
+                                        ? 'text-muted-foreground hover:text-yellow-400 hover:bg-yellow-400/10'
+                                        : 'text-muted-foreground/30 cursor-not-allowed'}`}
+                                    title={lead.phone ? 'Enviar template selecionado' : 'Sem telefone'}
+                                >
+                                    <Zap className={`w-4 h-4 sm:w-3 sm:h-3 ${isQuickSending ? 'animate-pulse text-yellow-400' : ''}`} />
+                                </button>
 
-                        {/* Chat */}
-                        <button
-                            onClick={handleChatClick}
-                            className={`w-8 h-8 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center active:scale-90 transition-all ${lead.phone
-                                ? 'text-muted-foreground hover:text-green-500 hover:bg-green-500/10'
-                                : 'text-muted-foreground/30 cursor-not-allowed'}`}
-                            title={lead.phone ? "Abrir conversa" : "Sem telefone"}
-                            disabled={!lead.phone}
-                        >
-                            <MessageCircle className="w-4 h-4 sm:w-3 sm:h-3" />
-                        </button>
+                                <button
+                                    onClick={handleChatClick}
+                                    className={`w-8 h-8 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center active:scale-90 transition-all ${lead.phone
+                                        ? 'text-muted-foreground hover:text-green-500 hover:bg-green-500/10'
+                                        : 'text-muted-foreground/30 cursor-not-allowed'}`}
+                                    title={lead.phone ? "Abrir conversa" : "Sem telefone"}
+                                    disabled={!lead.phone}
+                                >
+                                    <MessageCircle className="w-4 h-4 sm:w-3 sm:h-3" />
+                                </button>
+                            </>
+                        )}
 
                         {/* View */}
                         <button

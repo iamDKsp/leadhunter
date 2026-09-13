@@ -5,6 +5,8 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Pencil, Trash2, Plus } from 'lucide-react';
 import axios from 'axios';
+import { motion } from 'framer-motion';
+import { staggerContainer, tableRowVariants, staggerItem } from '@/lib/motion';
 import {
     Dialog,
     DialogContent,
@@ -158,22 +160,31 @@ export function Users() {
     // Assuming shadcn switch exists or standard checkbox. Let's use standard checkbox for simplicity if Switch not waiting.
     // Actually, let's use a checkbox styled as switch or just simple checkbox.
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center animate-fade-in">
+        <motion.div
+            variants={staggerContainer}
+            initial="initial"
+            animate="animate"
+            className="space-y-6"
+        >
+            <motion.div variants={staggerItem} className="flex justify-between items-center">
                 <div>
                     <h2 className="text-xl font-semibold text-primary">Gerenciamento de Usuários</h2>
                     <p className="text-sm text-muted-foreground mt-1">Adicione, edite e remova membros da equipe.</p>
                 </div>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <button
+                        <motion.button
+                            whileTap={{ scale: 0.95 }}
+                            whileHover={{ scale: 1.02 }}
+                            transition={{ type: "spring", stiffness: 500, damping: 25 }}
                             onClick={() => handleOpenDialog()}
-                            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-all shadow-lg hover:shadow-green-500/20"
+                            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-lg hover:shadow-green-500/20 active:scale-[0.97]"
                         >
                             <Plus className="w-4 h-4" />
                             Novo Usuário
-                        </button>
+                        </motion.button>
                     </DialogTrigger>
+
                     <DialogContent className="bg-card border-border backdrop-blur-xl">
                         <DialogHeader>
                             <DialogTitle>{editingUser ? 'Editar Usuário' : 'Novo Usuário'}</DialogTitle>
@@ -274,9 +285,10 @@ export function Users() {
                         </form>
                     </DialogContent>
                 </Dialog>
-            </div>
+            </motion.div>
 
-            <div className="bg-card/60 backdrop-blur-sm border border-border/30 rounded-xl overflow-hidden animate-fade-in delay-100 shadow-xl">
+
+            <motion.div variants={staggerItem} className="bg-card/60 backdrop-blur-sm border border-border/30 rounded-xl overflow-hidden shadow-xl">
                 <div className="p-4 border-b border-border/30">
                     <h3 className="font-semibold text-foreground">Usuários Cadastrados</h3>
                     <p className="text-sm text-muted-foreground">Lista detalhada de todos os usuários do sistema.</p>
@@ -295,7 +307,11 @@ export function Users() {
                         </thead>
                         <tbody className="divide-y divide-border/20">
                             {users.map((user) => (
-                                <tr key={user.id} className="hover:bg-secondary/30 transition-colors">
+                                <motion.tr
+                                    key={user.id}
+                                    variants={tableRowVariants}
+                                    className="hover:bg-secondary/30 transition-colors"
+                                >
                                     <td className="px-6 py-4 font-medium text-foreground">{user.name}</td>
                                     <td className="px-6 py-4 text-primary">{user.email}</td>
                                     <td className="px-6 py-4">
@@ -317,27 +333,31 @@ export function Users() {
                                     <td className="px-6 py-4 text-muted-foreground">{new Date(user.createdAt).toLocaleDateString()}</td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center justify-end gap-2">
-                                            <button
+                                            <motion.button
+                                                whileTap={{ scale: 0.85 }}
+                                                whileHover={{ scale: 1.15 }}
                                                 onClick={() => handleOpenDialog(user)}
-                                                className="w-8 h-8 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
+                                                className="w-8 h-8 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                                                 title="Editar"
                                             >
                                                 <Pencil className="w-4 h-4" />
-                                            </button>
-                                            <button
+                                            </motion.button>
+                                            <motion.button
+                                                whileTap={{ scale: 0.85 }}
+                                                whileHover={{ scale: 1.15 }}
                                                 onClick={() => handleDelete(user.id)}
-                                                className="w-8 h-8 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+                                                className="w-8 h-8 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                                                 title="Excluir"
                                             >
                                                 <Trash2 className="w-4 h-4" />
-                                            </button>
+                                            </motion.button>
                                         </div>
                                     </td>
-                                </tr>
+                                </motion.tr>
                             ))}
                             {users.length === 0 && (
                                 <tr>
-                                    <td colSpan={4} className="p-8 text-center text-muted-foreground">
+                                    <td colSpan={5} className="p-8 text-center text-muted-foreground">
                                         Nenhum usuário encontrado.
                                     </td>
                                 </tr>
@@ -345,7 +365,8 @@ export function Users() {
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </div>
+            </motion.div>
+        </motion.div>
+
     );
 }

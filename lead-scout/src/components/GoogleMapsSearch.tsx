@@ -11,6 +11,8 @@ import { GeographicFilter } from './geo/GeographicFilter';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { triggerHaptic } from '@/utils/haptics';
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
+import { staggerContainer, staggerItem } from '@/lib/motion';
 
 interface GoogleMapsSearchProps {
     onLeadAdded: (lead: Lead) => void;
@@ -412,90 +414,102 @@ export function GoogleMapsSearch({ onLeadAdded }: GoogleMapsSearchProps) {
                 </div>
             </Card>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <motion.div
+                variants={staggerContainer}
+                initial="initial"
+                animate="animate"
+                className="grid grid-cols-1 md:grid-cols-2 gap-4"
+            >
                 {results.map((place) => (
-                    <Card key={place.place_id} className="hover:shadow-md transition-shadow">
-                        <CardHeader className="pb-2">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <CardTitle className="text-lg font-bold">{place.name}</CardTitle>
-                                    <CardDescription className="flex flex-col mt-1 gap-1">
-                                        <span className="flex items-center"><MapPin className="h-3 w-3 mr-1 shrink-0" /> {place.address}</span>
-                                        <a
-                                            href={`https://www.google.com/maps/place/?q=place_id:${place.place_id}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-primary hover:underline text-xs flex items-center"
-                                        >
-                                            <Globe className="h-3 w-3 mr-1 shrink-0" /> Ver no Google Maps
-                                        </a>
-                                    </CardDescription>
-                                </div>
-                                {place.rating && (
-                                    <Badge variant="secondary" className="flex items-center shrink-0">
-                                        <Star className="h-3 w-3 mr-1 text-yellow-500" />
-                                        {place.rating}
-                                    </Badge>
-                                )}
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-2 mb-4 text-sm text-gray-600 dark:text-gray-300">
-                                {/* Telefone com destaque visual */}
-                                {place.formatted_phone_number ? (
-                                    <div className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 dark:bg-emerald-500/20 px-2.5 py-1 rounded-md text-xs w-fit">
-                                        <Phone className="w-3.5 h-3.5 shrink-0" />
-                                        <span>{place.formatted_phone_number}</span>
+                    <motion.div
+                        key={place.place_id}
+                        variants={staggerItem}
+                        whileHover={{ y: -3, transition: { duration: 0.2 } }}
+                    >
+                        <Card className="h-full border-border/40 hover:border-primary/40 hover:shadow-lg transition-all duration-200">
+                            <CardHeader className="pb-2">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <CardTitle className="text-lg font-bold">{place.name}</CardTitle>
+                                        <CardDescription className="flex flex-col mt-1 gap-1">
+                                            <span className="flex items-center"><MapPin className="h-3 w-3 mr-1 shrink-0" /> {place.address}</span>
+                                            <a
+                                                href={`https://www.google.com/maps/place/?q=place_id:${place.place_id}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-primary hover:underline text-xs flex items-center"
+                                            >
+                                                <Globe className="h-3 w-3 mr-1 shrink-0" /> Ver no Google Maps
+                                            </a>
+                                        </CardDescription>
                                     </div>
-                                ) : (
-                                    <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-md w-fit">
-                                        <Phone className="w-3.5 h-3.5 shrink-0" />
-                                        <span>Sem telefone informado</span>
-                                    </div>
-                                )}
-
-                                {/* Status de Funcionamento */}
-                                <div className="flex flex-wrap items-center gap-3 text-xs pt-1">
-                                    {place.business_status === 'OPERATIONAL' && (
-                                        <span className="flex items-center text-emerald-600 dark:text-emerald-400 font-medium">
-                                            <span className="w-2 h-2 rounded-full mr-1.5 bg-emerald-500" />
-                                            Empresa Ativa
-                                        </span>
+                                    {place.rating && (
+                                        <Badge variant="secondary" className="flex items-center shrink-0">
+                                            <Star className="h-3 w-3 mr-1 text-yellow-500" />
+                                            {place.rating}
+                                        </Badge>
                                     )}
-
-                                    {place.opening_hours?.open_now !== undefined && (
-                                        <div className="flex items-center">
-                                            <span className={`w-2 h-2 rounded-full mr-1.5 ${place.opening_hours.open_now ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-                                            {place.opening_hours.open_now ? 'Aberto agora' : 'Fechado no momento'}
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-2 mb-4 text-sm text-gray-600 dark:text-gray-300">
+                                    {/* Telefone com destaque visual */}
+                                    {place.formatted_phone_number ? (
+                                        <div className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 dark:bg-emerald-500/20 px-2.5 py-1 rounded-md text-xs w-fit">
+                                            <Phone className="w-3.5 h-3.5 shrink-0" />
+                                            <span>{place.formatted_phone_number}</span>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-md w-fit">
+                                            <Phone className="w-3.5 h-3.5 shrink-0" />
+                                            <span>Sem telefone informado</span>
                                         </div>
                                     )}
-                                </div>
-                            </div>
 
-                            <Button
-                                onClick={() => handleImport(place)}
-                                disabled={isImporting === place.place_id || place.saved}
-                                className="w-full"
-                                variant={place.saved ? "secondary" : "outline"}
-                            >
-                                {isImporting === place.place_id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                ) : place.saved ? (
-                                    <>
-                                        <Star className="h-4 w-4 mr-2 fill-current" />
-                                        Já Salvo
-                                    </>
-                                ) : (
-                                    <>
-                                        <Plus className="h-4 w-4 mr-2" />
-                                        Salvar como Lead
-                                    </>
-                                )}
-                            </Button>
-                        </CardContent>
-                    </Card>
+                                    {/* Status de Funcionamento */}
+                                    <div className="flex flex-wrap items-center gap-3 text-xs pt-1">
+                                        {place.business_status === 'OPERATIONAL' && (
+                                            <span className="flex items-center text-emerald-600 dark:text-emerald-400 font-medium">
+                                                <span className="w-2 h-2 rounded-full mr-1.5 bg-emerald-500" />
+                                                Empresa Ativa
+                                            </span>
+                                        )}
+
+                                        {place.opening_hours?.open_now !== undefined && (
+                                            <div className="flex items-center">
+                                                <span className={`w-2 h-2 rounded-full mr-1.5 ${place.opening_hours.open_now ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                                                {place.opening_hours.open_now ? 'Aberto agora' : 'Fechado no momento'}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <Button
+                                    onClick={() => handleImport(place)}
+                                    disabled={isImporting === place.place_id || place.saved}
+                                    className="w-full active:scale-[0.97] transition-all"
+                                    variant={place.saved ? "secondary" : "outline"}
+                                >
+                                    {isImporting === place.place_id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                    ) : place.saved ? (
+                                        <>
+                                            <Star className="h-4 w-4 mr-2 fill-current" />
+                                            Já Salvo
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            Salvar como Lead
+                                        </>
+                                    )}
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    </motion.div>
                 ))}
-            </div>
+            </motion.div>
+
 
             {results.length > 0 && (
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-2 text-muted-foreground text-sm mt-4 text-center">

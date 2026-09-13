@@ -51,7 +51,7 @@ export function LeadCard({ lead, onEdit, onDelete, onToggleContacted, onChatClic
 
   return (
     <div className={cn(
-      "bg-card/60 backdrop-blur-sm border border-border/30 rounded-xl p-4 hover:border-primary/30 transition-all group animate-fade-in relative overflow-hidden",
+      "bg-card/60 backdrop-blur-sm border border-border/30 rounded-xl p-4 hover:border-primary/40 hover:shadow-xl card-hover-lift transition-all group relative overflow-hidden",
       !lead.contacted && "shadow-[0_0_15px_-3px_rgba(255,215,0,0.3)] border-yellow-500/40 hover:border-yellow-500/60 hover:shadow-[0_0_20px_-3px_rgba(255,215,0,0.4)]"
     )}>
       {/* Contacted Overlay/Indicator - Moved to Top Left to avoid menu overlap */}
@@ -130,13 +130,15 @@ export function LeadCard({ lead, onEdit, onDelete, onToggleContacted, onChatClic
         {/* Actions - Top Right */}
         <div className="flex items-center gap-1">
           {/* Direct Chat Button */}
-          <button
-            onClick={() => onChatClick && onChatClick()}
-            className="w-8 h-8 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
-            title="Abrir Chat"
-          >
-            <MessageSquare className="w-4 h-4" />
-          </button>
+          {onChatClick && (
+            <button
+              onClick={() => onChatClick()}
+              className="w-8 h-8 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
+              title="Abrir Chat"
+            >
+              <MessageSquare className="w-4 h-4" />
+            </button>
+          )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -145,10 +147,12 @@ export function LeadCard({ lead, onEdit, onDelete, onToggleContacted, onChatClic
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="bg-popover border-border backdrop-blur-xl">
-              <DropdownMenuItem onClick={() => onChatClick && onChatClick()} className="cursor-pointer">
-                <MessageSquare className="w-4 h-4 mr-2" />
-                Conversar
-              </DropdownMenuItem>
+              {onChatClick && (
+                <DropdownMenuItem onClick={() => onChatClick()} className="cursor-pointer">
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Conversar
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={() => onToggleContacted(lead.id, !lead.contacted)} className="cursor-pointer">
                 {lead.contacted ? <XCircle className="w-4 h-4 mr-2" /> : <CheckCircle className="w-4 h-4 mr-2" />}
                 {lead.contacted ? 'Marcar como não contatado' : 'Marcar como contatado'}

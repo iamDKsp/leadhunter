@@ -9,6 +9,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useWhatsApp } from '@/context/WhatsAppContext';
 import { useNavigate } from 'react-router-dom';
+import { canViewPage } from '@/utils/permissions';
+import { motion } from 'framer-motion';
 
 interface HeaderProps {
   title: string;
@@ -23,17 +25,20 @@ export function Header({ title, subtitle, onAddLead, user, onLogout, onToggleMob
   const { pendingNotifications, dismissNotification, dismissAllNotifications } = useWhatsApp();
   const navigate = useNavigate();
 
+  const canChat = canViewPage(null, 'conversas');
+
   return (
     <header className="flex items-center justify-between px-3 sm:px-6 pt-[env(safe-area-inset-top,0px)] h-[calc(3.5rem+env(safe-area-inset-top,0px))] sm:h-16 border-b border-border/30 bg-card/85 backdrop-blur-md sticky top-0 z-30 transition-all duration-300 select-none">
       <div className="flex items-center gap-2.5 min-w-0">
         {onToggleMobileMenu && (
-          <button
+          <motion.button
+            whileTap={{ scale: 0.9 }}
             onClick={onToggleMobileMenu}
-            className="md:hidden w-10 h-10 -ml-1 rounded-xl border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary active-press transition-all"
+            className="md:hidden w-10 h-10 -ml-1 rounded-xl border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
             aria-label="Abrir menu"
           >
             <Menu className="w-5 h-5" />
-          </button>
+          </motion.button>
         )}
         <div className="min-w-0">
           <h1 className="text-base sm:text-2xl font-bold text-foreground tracking-tight truncate">{title}</h1>
@@ -42,70 +47,78 @@ export function Header({ title, subtitle, onAddLead, user, onLogout, onToggleMob
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
+        {canChat && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                className="relative w-10 h-10 rounded-xl border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors outline-none"
+              >
+                <Bell className="w-5 h-5" />
+                {pendingNotifications.length > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-card animate-pulse">
+                    {pendingNotifications.length > 9 ? '9+' : pendingNotifications.length}
+                  </span>
+                )}
+              </motion.button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80 bg-card border-border/50 backdrop-blur-xl">
+              <div className="flex items-center justify-between pr-2">
+                <DropdownMenuLabel>Notificações</DropdownMenuLabel>
+                {pendingNotifications.length > 0 && (
+                  <button
+                    onClick={dismissAllNotifications}
+                    className="text-xs text-muted-foreground hover:text-foreground hover:underline transition-colors"
+                  >
+                    Limpar Todas
+                  </button>
+                )}
+              </div>
+
+              <DropdownMenuSeparator className="bg-border/50" />
+
+              <div className="max-h-[300px] overflow-y-auto w-full">
+                {pendingNotifications.length === 0 ? (
+                  <div className="p-4 text-center text-sm text-muted-foreground">
+                    Nenhuma nova notificação.
+                  </div>
+                ) : (
+                  <div className="flex flex-col">
+                    {pendingNotifications.map((notif) => (
+                      <DropdownMenuItem
+                        key={notif.id}
+                        className="flex flex-col items-start gap-1 p-3 cursor-pointer focus:bg-primary/5 focus:text-foreground rounded-none border-b border-border/20 last:border-0"
+                        onClick={() => {
+                          dismissNotification(notif.id);
+                          navigate(`/conversas?chatId=${encodeURIComponent(notif.chatId)}`);
+                        }}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className="font-semibold text-sm truncate pr-2">
+                            {notif.senderName || 'Desconhecido'}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground flex-shrink-0">
+                            {new Date(notif.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <span className="text-xs text-muted-foreground line-clamp-1 truncate w-full">
+                          {notif.type === 'ptt' || notif.type === 'audio' ? '🎤 Áudio' : notif.type === 'image' || notif.type === 'video' ? '📷 Mídia' : notif.body}
+                        </span>
+                      </DropdownMenuItem>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="relative w-10 h-10 rounded-xl border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary active-press transition-all outline-none">
-              <Bell className="w-5 h-5" />
-              {pendingNotifications.length > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-card animate-pulse">
-                  {pendingNotifications.length > 9 ? '9+' : pendingNotifications.length}
-                </span>
-              )}
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80 bg-card border-border/50 backdrop-blur-xl">
-            <div className="flex items-center justify-between pr-2">
-              <DropdownMenuLabel>Notificações</DropdownMenuLabel>
-              {pendingNotifications.length > 0 && (
-                <button
-                  onClick={dismissAllNotifications}
-                  className="text-xs text-muted-foreground hover:text-foreground hover:underline transition-colors"
-                >
-                  Limpar Todas
-                </button>
-              )}
-            </div>
-
-            <DropdownMenuSeparator className="bg-border/50" />
-
-            <div className="max-h-[300px] overflow-y-auto w-full">
-              {pendingNotifications.length === 0 ? (
-                <div className="p-4 text-center text-sm text-muted-foreground">
-                  Nenhuma nova notificação.
-                </div>
-              ) : (
-                <div className="flex flex-col">
-                  {pendingNotifications.map((notif) => (
-                    <DropdownMenuItem
-                      key={notif.id}
-                      className="flex flex-col items-start gap-1 p-3 cursor-pointer focus:bg-primary/5 focus:text-foreground rounded-none border-b border-border/20 last:border-0"
-                      onClick={() => {
-                        dismissNotification(notif.id);
-                        navigate(`/conversas?chatId=${encodeURIComponent(notif.chatId)}`);
-                      }}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-semibold text-sm truncate pr-2">
-                          {notif.senderName || 'Desconhecido'}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground flex-shrink-0">
-                          {new Date(notif.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      <span className="text-xs text-muted-foreground line-clamp-1 truncate w-full">
-                        {notif.type === 'ptt' || notif.type === 'audio' ? '🎤 Áudio' : notif.type === 'image' || notif.type === 'video' ? '📷 Mídia' : notif.body}
-                      </span>
-                    </DropdownMenuItem>
-                  ))}
-                </div>
-              )}
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className={`${user?.avatar ? 'p-0.5' : 'p-0'} w-10 h-10 rounded-full border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary active-press transition-all outline-none overflow-hidden`}>
+            <motion.button
+              whileTap={{ scale: 0.92 }}
+              className={`${user?.avatar ? 'p-0.5' : 'p-0'} w-10 h-10 rounded-full border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors outline-none overflow-hidden`}
+            >
               {user?.avatar ? (
                 <img
                   src={user.avatar.startsWith('http') || user.avatar.startsWith('/')
@@ -117,7 +130,8 @@ export function Header({ title, subtitle, onAddLead, user, onLogout, onToggleMob
               ) : (
                 <User className="w-5 h-5" />
               )}
-            </button>
+            </motion.button>
+
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56 bg-card border-border/50 backdrop-blur-xl">
             <DropdownMenuLabel>

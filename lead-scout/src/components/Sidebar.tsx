@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
 interface SidebarProps {
   folders: Folder[];
@@ -102,32 +103,47 @@ export function Sidebar({
       <nav className="flex-1 p-3 overflow-y-auto custom-scrollbar">
         {!isCollapsed && <p className="text-xs text-muted-foreground px-3 mb-2 uppercase tracking-wider font-semibold">Menu Principal</p>}
         <ul className="space-y-1">
-          {visibleMenuItems.map((item) => (
-            <li key={item.id}>
-              <button
-                onClick={() => {
-                  if (item.id === 'settings') {
-                    onOpenSettings?.();
-                  } else {
-                    onViewChange(item.id);
-                  }
-                  onCloseMobile?.();
-                }}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-300",
-                  activeView === item.id
-                    ? "bg-primary/20 text-primary shadow-sm"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-                  isCollapsed && !mobileOpen && "justify-center px-2"
-                )}
-                title={isCollapsed && !mobileOpen ? item.label : undefined}
-              >
-                <item.icon className="w-5 h-5 flex-shrink-0" />
-                {(!isCollapsed || mobileOpen) && <span className="text-sm font-medium">{item.label}</span>}
-              </button>
-            </li>
-          ))}
+          {visibleMenuItems.map((item) => {
+            const isActive = activeView === item.id;
+            return (
+              <li key={item.id} className="relative">
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => {
+                    if (item.id === 'settings') {
+                      onOpenSettings?.();
+                    } else {
+                      onViewChange(item.id);
+                    }
+                    onCloseMobile?.();
+                  }}
+                  className={cn(
+                    "relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-200 z-10",
+                    isActive
+                      ? "text-primary font-semibold"
+                      : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
+                    isCollapsed && !mobileOpen && "justify-center px-2"
+                  )}
+                  title={isCollapsed && !mobileOpen ? item.label : undefined}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="active-sidebar-pill"
+                      className="absolute inset-0 bg-primary/15 border border-primary/25 rounded-lg shadow-[0_0_15px_rgba(0,217,192,0.15)] -z-10"
+                      transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                    />
+                  )}
+                  <item.icon className={cn(
+                    "w-5 h-5 flex-shrink-0 transition-transform duration-200",
+                    isActive ? "scale-110 text-primary" : "group-hover:scale-105"
+                  )} />
+                  {(!isCollapsed || mobileOpen) && <span className="text-sm font-medium">{item.label}</span>}
+                </motion.button>
+              </li>
+            );
+          })}
         </ul>
+
 
         {/* Pastas */}
         <div className="mt-8">
@@ -180,29 +196,32 @@ export function Sidebar({
 
       {/* Footer */}
       <div className="p-3 border-t border-border/30 bg-card/50">
-        <button
+        <motion.button
+          whileTap={{ scale: 0.97 }}
           onClick={() => {
             onOpenSettings?.();
             onCloseMobile?.();
           }}
           className={cn(
-            "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground transition-all duration-300",
+            "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground transition-all duration-200",
             isCollapsed && !mobileOpen && "justify-center px-2"
           )}
           title={isCollapsed && !mobileOpen ? "Configurações" : undefined}
         >
           <Settings className="w-5 h-5 flex-shrink-0" />
           {(!isCollapsed || mobileOpen) && <span className="text-sm font-medium">Configurações</span>}
-        </button>
-        <button
+        </motion.button>
+        <motion.button
+          whileTap={{ scale: 0.97 }}
           onClick={toggleSidebar}
           className="hidden md:flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground transition-all mt-1 justify-center"
           title={isCollapsed ? "Expandir" : "Minimizar"}
         >
           <ChevronLeft className={cn("w-5 h-5 flex-shrink-0 transition-transform duration-300", isCollapsed && "rotate-180")} />
           {!isCollapsed && <span className="text-sm font-medium">Minimizar Menu</span>}
-        </button>
+        </motion.button>
       </div>
+
     </aside>
     </>
   );

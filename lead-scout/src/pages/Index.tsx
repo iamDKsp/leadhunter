@@ -23,11 +23,13 @@ import Monitoring from './Monitoring';
 import LeadManagement from './LeadManagement';
 import { toast } from 'sonner';
 import { User } from '@/types/auth'; // Import User type
-import { canViewPage } from '@/utils/permissions'; // Import permission helper
+import { canViewPage, getDefaultView } from '@/utils/permissions'; // Import permission helper
 import { SettingsModal } from '@/components/SettingsModal';
 import { useWhatsApp } from '@/context/WhatsAppContext'; // Import useWhatsApp hook
 import { MobileBottomNav } from '@/components/navigation/MobileBottomNav';
 import { MobileMoreSheet } from '@/components/navigation/MobileMoreSheet';
+import { motion, AnimatePresence } from 'framer-motion';
+import { pageVariants, staggerContainer, staggerItem } from '@/lib/motion';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -77,17 +79,12 @@ const Index = () => {
   useEffect(() => {
     if (view) {
       setActiveView(view);
-    } else {
-      // Default routing based on role
-      if (user?.role === 'SUPER_ADMIN') {
-        setActiveView('management');
-        navigate('/management', { replace: true });
-      } else {
-        setActiveView('leads');
-        navigate('/leads', { replace: true });
-      }
+    } else if (user) {
+      const defaultView = getDefaultView(user);
+      setActiveView(defaultView);
+      navigate(`/${defaultView}`, { replace: true });
     }
-  }, [view, user]);
+  }, [view, user, navigate]);
 
   // Handle view change by navigating
   const handleViewChange = (newView: string) => {
@@ -263,6 +260,19 @@ const Index = () => {
       return <LeadsCRM user={user} />;
     }
 
+    if (activeView === 'search') {
+      return (
+        <GoogleMapsSearch onLeadAdded={(newLead) => {
+          const isAdmin = user?.role === 'SUPER_ADMIN';
+          const message = isAdmin
+            ? "Lead enviado para triagem. Verifique na aba 'Gestão de Leads'."
+            : "Lead salvo com sucesso! Aguarde a aprovação.";
+          toast.success(message);
+          refresh(); // Update the list immediately
+        }} />
+      );
+    }
+
 
     return (
       <>
@@ -277,24 +287,30 @@ const Index = () => {
         </div>
 
         {/* Leads Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-fade-in delay-200">
+        <motion.div
+          variants={staggerContainer}
+          initial="initial"
+          animate="animate"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+        >
           {filteredLeads.map((lead) => (
-            <LeadCard
-              key={lead.id}
-              lead={lead}
-              onEdit={handleEditLead}
-              onDelete={handleDeleteLead}
-              onToggleContacted={handleToggleContacted}
-              onChatClick={() => {
-                setActiveChat({
-                  number: lead.phone,
-                  name: lead.name
-                });
-                setIsChatOpen(true);
-              }}
-            />
+            <motion.div key={lead.id} variants={staggerItem}>
+              <LeadCard
+                lead={lead}
+                onEdit={handleEditLead}
+                onDelete={handleDeleteLead}
+                onToggleContacted={handleToggleContacted}
+                onChatClick={canViewPage(user, 'conversas') ? () => {
+                  setActiveChat({
+                    number: lead.phone,
+                    name: lead.name
+                  });
+                  setIsChatOpen(true);
+                } : undefined}
+              />
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         {filteredLeads.length === 0 && (
           <div className="bg-card/40 backdrop-blur-sm border border-border/30 p-12 text-center rounded-xl animate-fade-in">
@@ -346,18 +362,35 @@ const Index = () => {
               ? "p-2 sm:p-4 md:p-6 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-6 overflow-hidden flex flex-col"
               : "p-3 sm:p-4 md:p-6 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-6"
         )}>
-          {activeView === 'search' ? (
-            <GoogleMapsSearch onLeadAdded={(newLead) => {
-              const isAdmin = user?.role === 'SUPER_ADMIN';
-              const message = isAdmin
-                ? "Lead enviado para triagem. Verifique na aba 'Gestão de Leads'."
-                : "Lead salvo com sucesso! Aguarde a aprovação.";
-              toast.success(message);
-              refresh(); // Update the list immediately
-            }} />
-          ) : (
-            renderContent()
-          )}
+          <AnimatePresence mode="wait" initial={false}>
+
+            <motion.div
+              key={activeView}
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className={cn(
+                "w-full",
+                activeView === 'leads' ? "h-full flex flex-col" : ""
+              )}
+            >
+              {activeView === 'search' ? (
+                <GoogleMapsSearch onLeadAdded={(newLead) => {
+                  const isAdmin = user?.role === 'SUPER_ADMIN';
+                  const message = isAdmin
+                    ? "Lead enviado para triagem. Verifique na aba 'Gestão de Leads'."
+                    : "Lead salvo com sucesso! Aguarde a aprovação.";
+                  toast.success(message);
+                  refresh(); // Update the list immediately
+                }} />
+              ) : (
+                renderContent()
+              )}
+            </motion.div>
+          </AnimatePresence>
+
+
         </div>
       </main>
 
@@ -388,12 +421,14 @@ const Index = () => {
         editingLead={editingLead}
       />
 
-      <WhatsAppDrawer
-        open={isChatOpen}
-        onOpenChange={setIsChatOpen}
-        targetNumber={activeChat?.number}
-        targetName={activeChat?.name}
-      />
+      {canViewPage(user, 'conversas') && (
+        <WhatsAppDrawer
+          open={isChatOpen}
+          onOpenChange={setIsChatOpen}
+          targetNumber={activeChat?.number}
+          targetName={activeChat?.name}
+        />
+      )}
 
       <SettingsModal
         open={isSettingsOpen}

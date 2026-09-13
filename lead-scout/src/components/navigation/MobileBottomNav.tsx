@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useWhatsApp } from '@/context/WhatsAppContext';
 import { triggerHaptic } from '@/utils/haptics';
+import { motion } from 'framer-motion';
 
 interface MobileBottomNavProps {
   activeView: string;
@@ -66,27 +67,29 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           const isActive = activeView === item.id;
 
           return (
-            <button
+            <motion.button
               key={item.id}
+              whileTap={{ scale: 0.9 }}
               onClick={() => {
                 triggerHaptic('light');
                 onViewChange(item.id);
               }}
-              className={`relative flex flex-col items-center justify-center flex-1 py-1.5 transition-all duration-200 ${
+              className={`relative flex flex-col items-center justify-center flex-1 py-1.5 transition-colors duration-200 ${
                 isActive
                   ? 'text-primary font-semibold'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <div className="relative">
-                <div
-                  className={`p-1 rounded-xl transition-all ${
-                    isActive
-                      ? 'bg-primary/15 text-primary scale-105'
-                      : 'text-muted-foreground'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
+                <div className="p-1 rounded-xl relative">
+                  {isActive && (
+                    <motion.div
+                      layoutId="active-mobile-pill"
+                      className="absolute inset-0 bg-primary/20 rounded-xl -z-10"
+                      transition={{ type: "spring", stiffness: 500, damping: 32 }}
+                    />
+                  )}
+                  <Icon className={`w-5 h-5 transition-transform duration-200 ${isActive ? 'scale-110' : ''}`} />
                 </div>
                 {item.badge && (
                   <span className="absolute -top-1 -right-2 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full shadow-sm animate-pulse">
@@ -98,14 +101,19 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 {item.label}
               </span>
               {isActive && (
-                <span className="absolute bottom-1 w-5 h-0.5 bg-primary rounded-full" />
+                <motion.span
+                  layoutId="active-mobile-dot"
+                  className="absolute bottom-1 w-5 h-0.5 bg-primary rounded-full shadow-[0_0_8px_rgba(0,217,192,0.8)]"
+                  transition={{ type: "spring", stiffness: 500, damping: 32 }}
+                />
               )}
-            </button>
+            </motion.button>
           );
         })}
 
         {/* More Button */}
-        <button
+        <motion.button
+          whileTap={{ scale: 0.9 }}
           onClick={() => {
             triggerHaptic('light');
             onOpenMore();
@@ -118,8 +126,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <span className="text-[10px] mt-0.5 font-medium tracking-tight">
             Mais
           </span>
-        </button>
+        </motion.button>
       </div>
     </nav>
   );
 };
+

@@ -41,7 +41,8 @@ model Permission {
   canSearchLeads      Boolean @default(false)  // Pode pesquisar novos leads na API
   canViewAllLeads     Boolean @default(false)  // Pode ver todos os leads (admin)
   canViewOwnLeads     Boolean @default(true)   // Pode ver leads atribuídos a si
-  canManageLeads      Boolean @default(false)  // Pode criar/editar/excluir leads
+  canManageLeads      Boolean @default(false)  // Pode criar/editar leads
+  canDeleteLeads      Boolean @default(false)  // Pode excluir leads do sistema
   canAssignLeads      Boolean @default(false)  // Pode atribuir leads a vendedores
   canImportLeads      Boolean @default(false)  // Pode importar leads via CSV/Excel
   canExportLeads      Boolean @default(false)  // Pode exportar leads
@@ -50,14 +51,17 @@ model Permission {
   canViewCRM          Boolean @default(true)   // Acesso ao CRM
   canMoveCards        Boolean @default(true)   // Pode mover cards entre colunas
   canManageStages     Boolean @default(false)  // Pode gerenciar funis e etapas
+  canBulkActions      Boolean @default(false)  // Pode executar ações em lote no CRM
   
   // Module Permissions
   canViewDashboard    Boolean @default(true)   // Acesso ao Dashboard
+  canViewAnalytics    Boolean @default(false)  // Acesso a Análises e Métricas
   canViewCosts        Boolean @default(false)  // Pode ver custos de API
   
   // Chat Permissions
   canViewChat         Boolean @default(false)  // Acesso ao chat WhatsApp
   canSendMessage      Boolean @default(false)  // Pode enviar mensagens
+  canSendMedia        Boolean @default(false)  // Pode enviar áudios, imagens e arquivos
   canDeleteMessages   Boolean @default(false)  // Pode apagar mensagens
   canViewAllChats     Boolean @default(false)  // Pode ver chats de outros usuários
   canManageConnections Boolean @default(false) // Pode conectar/desconectar WhatsApp

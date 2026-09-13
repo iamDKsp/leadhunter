@@ -8,16 +8,20 @@ type PermissionKey =
     | 'canViewAllLeads'
     | 'canViewOwnLeads'
     | 'canManageLeads'
+    | 'canDeleteLeads'
     | 'canAssignLeads'
     | 'canImportLeads'
     | 'canExportLeads'
     | 'canViewCRM'
     | 'canMoveCards'
     | 'canManageStages'
+    | 'canBulkActions'
     | 'canViewDashboard'
+    | 'canViewAnalytics'
     | 'canViewCosts'
     | 'canViewChat'
     | 'canSendMessage'
+    | 'canSendMedia'
     | 'canDeleteMessages'
     | 'canViewAllChats'
     | 'canManageConnections'
@@ -193,16 +197,20 @@ export const getUserPermissions = async (userId: string) => {
             canViewAllLeads: true,
             canViewOwnLeads: true,
             canManageLeads: true,
+            canDeleteLeads: true,
             canAssignLeads: true,
             canImportLeads: true,
             canExportLeads: true,
             canViewCRM: true,
             canMoveCards: true,
             canManageStages: true,
+            canBulkActions: true,
             canViewDashboard: true,
+            canViewAnalytics: true,
             canViewCosts: true,
             canViewChat: true,
             canSendMessage: true,
+            canSendMedia: true,
             canDeleteMessages: true,
             canViewAllChats: true,
             canManageConnections: true,
@@ -229,6 +237,7 @@ export const getUserPermissions = async (userId: string) => {
         canViewAllLeads: perms?.canViewAllLeads ?? false,
         canViewOwnLeads: perms?.canViewOwnLeads ?? true,
         canManageLeads: perms?.canManageLeads ?? false,
+        canDeleteLeads: perms?.canDeleteLeads ?? false,
         canAssignLeads: perms?.canAssignLeads ?? false,
         canImportLeads: perms?.canImportLeads ?? false,
         canExportLeads: perms?.canExportLeads ?? false,
@@ -237,14 +246,17 @@ export const getUserPermissions = async (userId: string) => {
         canViewCRM: perms?.canViewCRM ?? false,
         canMoveCards: perms?.canMoveCards ?? false,
         canManageStages: perms?.canManageStages ?? false,
+        canBulkActions: perms?.canBulkActions ?? false,
 
         // Module Permissions
         canViewDashboard: perms?.canViewDashboard ?? false,
+        canViewAnalytics: perms?.canViewAnalytics ?? false,
         canViewCosts: perms?.canViewCosts ?? false,
 
         // Chat Permissions
         canViewChat: perms?.canViewChat ?? false,
         canSendMessage: perms?.canSendMessage ?? false,
+        canSendMedia: perms?.canSendMedia ?? false,
         canDeleteMessages: perms?.canDeleteMessages ?? false,
         canViewAllChats: perms?.canViewAllChats ?? false,
         canManageConnections: perms?.canManageConnections ?? false,

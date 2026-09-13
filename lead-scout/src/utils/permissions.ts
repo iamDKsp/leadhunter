@@ -1,14 +1,25 @@
 import { User, Permission } from '@/types/auth';
 
+export const getCurrentUser = (): User | null => {
+    try {
+        const stored = localStorage.getItem('user');
+        return stored ? JSON.parse(stored) : null;
+    } catch {
+        return null;
+    }
+};
+
 export const hasPermission = (user: User | undefined | null, permission: keyof Permission): boolean => {
-    if (!user) return false;
+    // If no user is passed, fallback to current stored user
+    const targetUser = user ?? getCurrentUser();
+    if (!targetUser) return false;
 
     // Admins have full access
-    if (user.role === 'SUPER_ADMIN') return true;
+    if (targetUser.role === 'SUPER_ADMIN') return true;
 
     // If permissions object exists, check it
-    if (user.permissions) {
-        return !!user.permissions[permission];
+    if (targetUser.permissions) {
+        return !!targetUser.permissions[permission];
     }
 
     // Fallback: if no detailed permissions but has AccessGroup (shouldn't happen with correct backend)
@@ -17,39 +28,71 @@ export const hasPermission = (user: User | undefined | null, permission: keyof P
 };
 
 export const canViewPage = (user: User | undefined | null, viewId: string): boolean => {
-    if (!user) return false;
+    const targetUser = user ?? getCurrentUser();
+    if (!targetUser) return false;
 
-    if (user.role === 'SUPER_ADMIN') return true;
+    if (targetUser.role === 'SUPER_ADMIN') return true;
 
     // Mapping view IDs to permissions
     switch (viewId) {
         case 'management':
-            return hasPermission(user, 'canManageLeads');
+            return hasPermission(targetUser, 'canManageLeads');
         case 'dashboard':
-            return hasPermission(user, 'canViewDashboard');
+            return hasPermission(targetUser, 'canViewDashboard');
         case 'personal':
-            return hasPermission(user, 'canViewPersonal');
+            return hasPermission(targetUser, 'canViewPersonal');
         case 'leads':
-            return hasPermission(user, 'canViewCRM') || hasPermission(user, 'canViewAllLeads') || hasPermission(user, 'canViewOwnLeads');
+            return hasPermission(targetUser, 'canViewCRM') || hasPermission(targetUser, 'canViewAllLeads') || hasPermission(targetUser, 'canViewOwnLeads');
         case 'users':
-            return hasPermission(user, 'canManageUsers');
+            return hasPermission(targetUser, 'canManageUsers');
         case 'monitoring':
-            return hasPermission(user, 'canViewMonitoring');
+            return hasPermission(targetUser, 'canViewMonitoring');
         case 'access-groups':
-            return hasPermission(user, 'canManageGroups');
+            return hasPermission(targetUser, 'canManageGroups');
         case 'costs':
-            return hasPermission(user, 'canViewCosts');
+            return hasPermission(targetUser, 'canViewCosts');
         case 'search':
-            return hasPermission(user, 'canSearchLeads');
+            return hasPermission(targetUser, 'canSearchLeads');
         case 'analytics':
-            return true; // Everyone can view analytics
+            return hasPermission(targetUser, 'canViewAnalytics');
         case 'settings':
-            return hasPermission(user, 'canManageSettings');
+            return hasPermission(targetUser, 'canManageSettings');
         case 'conversas':
-            return hasPermission(user, 'canViewChat');
+            return hasPermission(targetUser, 'canViewChat');
         default:
-            // Files/folders usually unrestricted or have their own logic
-            if (viewId.startsWith('folder-')) return true;
-            return true;
+            if (viewId.startsWith('folder-')) {
+                return hasPermission(targetUser, 'canViewAllLeads') || hasPermission(targetUser, 'canViewOwnLeads') || hasPermission(targetUser, 'canManageFolders');
+            }
+            return false;
     }
 };
+
+/**
+ * Returns the first available view for the user upon login or redirection.
+ */
+export const getDefaultView = (user: User | undefined | null): string => {
+    if (!user) return 'leads';
+    if (user.role === 'SUPER_ADMIN') return 'management';
+
+    const preferredViews = [
+        'management',
+        'leads',
+        'conversas',
+        'personal',
+        'search',
+        'monitoring',
+        'analytics',
+        'costs',
+        'users',
+        'access-groups',
+    ];
+
+    for (const viewId of preferredViews) {
+        if (canViewPage(user, viewId)) {
+            return viewId;
+        }
+    }
+
+    return 'personal';
+};
+

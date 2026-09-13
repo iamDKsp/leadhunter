@@ -14,6 +14,9 @@ import {
     Settings,
     Activity,
     Layers,
+    Trash2,
+    BarChart3,
+    Mic,
     LucideIcon
 } from 'lucide-react';
 import { SearchLeadsPreview } from './previews/SearchLeadsPreview';
@@ -37,19 +40,23 @@ const PERMISSION_ICONS: Record<string, LucideIcon> = {
     canViewAllLeads: Database,
     canViewOwnLeads: Database,
     canManageLeads: Layers,
+    canDeleteLeads: Trash2,
     canAssignLeads: Users,
     canImportLeads: FileSpreadsheet,
     canExportLeads: FileSpreadsheet,
     canViewCRM: Kanban,
     canMoveCards: Kanban,
     canManageStages: Kanban,
+    canBulkActions: Layers,
     canViewChat: MessageSquare,
     canSendMessage: MessageSquare,
+    canSendMedia: Mic,
     canDeleteMessages: MessageSquare,
     canViewAllChats: MessageSquare,
     canManageConnections: MessageSquare,
     canUseOwnWhatsApp: MessageSquare,
     canViewDashboard: TrendingUp,
+    canViewAnalytics: BarChart3,
     canViewCosts: TrendingUp,
     canViewSystemLogs: Activity,
     canManageSettings: Settings,
@@ -88,18 +95,20 @@ export function PermissionPreviewPanel({
 
             case 'canExportLeads':
             case 'canImportLeads':
+            case 'canBulkActions':
                 return <ExportLeadsPreview />;
 
             case 'canViewChat':
             case 'canSendMessage':
+            case 'canSendMedia':
             case 'canUseOwnWhatsApp':
             case 'canViewAllChats':
                 return <WhatsAppChatPreview />;
 
             default:
-                const riskLevel = ['canManageUsers', 'canManageGroups', 'canManageSettings', 'canManageIntegrations'].includes(permissionKey)
+                const riskLevel = ['canManageUsers', 'canManageGroups', 'canManageSettings', 'canManageIntegrations', 'canDeleteLeads'].includes(permissionKey)
                     ? 'high'
-                    : ['canManageLeads', 'canViewCosts', 'canViewSystemLogs'].includes(permissionKey)
+                    : ['canManageLeads', 'canViewCosts', 'canViewSystemLogs', 'canViewAnalytics'].includes(permissionKey)
                     ? 'medium'
                     : 'low';
 
