@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticateToken } from '../middleware/auth';
+import { checkPermission } from '../middleware/authorization';
 import {
     getStats,
     getUsers,
@@ -14,9 +15,9 @@ const router = express.Router();
 router.use(authenticateToken);
 
 // Stats & Users
-router.get('/stats', getStats);
-router.get('/users', getUsers);
-router.get('/chats/:userId', getUserChats);
+router.get('/stats', checkPermission('canViewMonitoring'), getStats);
+router.get('/users', checkPermission('canViewMonitoring'), getUsers);
+router.get('/chats/:userId', checkPermission('canViewMonitoring'), getUserChats);
 
 // Session Management
 router.post('/heartbeat', heartbeat);

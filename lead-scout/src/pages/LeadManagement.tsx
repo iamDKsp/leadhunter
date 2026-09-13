@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CyberRadarLoader } from '@/components/ui/CyberRadarLoader';
 import { useLeads } from '@/hooks/useLeads';
 import { Lead } from '@/types/lead';
 import { Button } from '@/components/ui/button';
@@ -77,7 +78,11 @@ export default function LeadManagement() {
     };
 
     if (isLoading) {
-        return <div className="p-8 text-center">Carregando leads para triagem...</div>;
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <CyberRadarLoader size="lg" label="CARREGANDO LEADS..." />
+            </div>
+        );
     }
 
     return (

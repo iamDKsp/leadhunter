@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CyberRadarLoader } from '@/components/ui/CyberRadarLoader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Lead, Stage } from '@/types/lead';
@@ -257,7 +258,7 @@ const LeadsCRM = ({ user }: LeadsCRMProps) => {
         }
     };
 
-    const hasManagePermissions = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN' || user?.permissions?.canManageLeads;
+    const hasManagePermissions = user?.role === 'SUPER_ADMIN' || user?.permissions?.canManageLeads;
 
     return (
         <div className="flex-1 overflow-hidden p-2 sm:p-4 md:p-6 flex flex-col h-full">
@@ -373,22 +374,8 @@ const LeadsCRM = ({ user }: LeadsCRMProps) => {
                                     {(() => {
                                         if (isLoading) {
                                             return (
-                                                <div className="space-y-3 animate-fade-in pt-1">
-                                                    {[1, 2, 3, 4].map(i => (
-                                                        <div key={i} className="p-3.5 bg-card/60 border border-border/40 rounded-xl space-y-3">
-                                                            <div className="flex items-center gap-3">
-                                                                <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
-                                                                <div className="space-y-1.5 flex-1 min-w-0">
-                                                                    <Skeleton className="h-4 w-3/4 rounded" />
-                                                                    <Skeleton className="h-3 w-1/2 rounded" />
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-2 pt-1">
-                                                                <Skeleton className="h-3 w-24 rounded" />
-                                                                <Skeleton className="h-3 w-20 rounded" />
-                                                            </div>
-                                                        </div>
-                                                    ))}
+                                                <div className="flex items-center justify-center py-8">
+                                                    <CyberRadarLoader size="sm" label="BUSCANDO LEADS..." />
                                                 </div>
                                             );
                                         }

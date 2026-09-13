@@ -186,12 +186,12 @@ export const getCompanies = async (req: AuthRequest, res: Response) => {
         }
 
         // Filter logic:
-        // 1. Super Admin or Admin -> Sees all (usually, assuming Admin has canViewAllLeads true by default or bypass)
-        // 2. canViewAllLeads -> Sees all
+        // 1. Super Admin -> Sees all (bypass)
+        // 2. canViewAllLeads -> Sees all (via access group)
         // 3. canViewOwnLeads -> Sees only assigned
         // 4. Neither -> Sees none
 
-        if (permissions?.role !== 'SUPER_ADMIN' && permissions?.role !== 'ADMIN' && !permissions?.canViewAllLeads) {
+        if (permissions?.role !== 'SUPER_ADMIN' && !permissions?.canViewAllLeads) {
             if (permissions?.canViewOwnLeads) {
                 where.responsibleId = userId;
             } else {
@@ -247,6 +247,19 @@ export const updateCompany = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
         const data = { ...req.body };
+
+        // Ownership check: if user can't view all leads, verify they own this lead
+        const userId = req.user?.userId;
+        if (userId) {
+            const permissions = await getUserPermissions(userId);
+            if (permissions?.role !== 'SUPER_ADMIN' && !permissions?.canViewAllLeads) {
+                const company = await prisma.company.findUnique({ where: { id }, select: { responsibleId: true } });
+                if (company && company.responsibleId !== userId) {
+                    return res.status(403).json({ error: 'You can only edit leads assigned to you' });
+                }
+            }
+        }
+
         if (Array.isArray(data.tags)) {
             data.tags = data.tags.join(',');
         }
@@ -263,6 +276,19 @@ export const updateCompany = async (req: AuthRequest, res: Response) => {
 export const deleteCompany = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
+
+        // Ownership check
+        const userId = req.user?.userId;
+        if (userId) {
+            const permissions = await getUserPermissions(userId);
+            if (permissions?.role !== 'SUPER_ADMIN' && !permissions?.canViewAllLeads) {
+                const company = await prisma.company.findUnique({ where: { id }, select: { responsibleId: true } });
+                if (company && company.responsibleId !== userId) {
+                    return res.status(403).json({ error: 'You can only delete leads assigned to you' });
+                }
+            }
+        }
+
         await prisma.company.delete({ where: { id } });
         res.status(204).send();
     } catch (error) {

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { CyberRadarLoader } from './ui/CyberRadarLoader';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 
@@ -313,8 +314,8 @@ export const WhatsAppDrawer = ({ open, onOpenChange, targetNumber, targetName }:
                                     <p className="mt-4 text-black font-semibold">Escaneie para conectar</p>
                                 </div>
                             ) : (
-                                <div className="flex flex-col items-center">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400 mb-4"></div>
+                                <div className="flex flex-col items-center gap-2">
+                                    <CyberRadarLoader size="sm" label={null} />
                                     <p>Conectando ao WhatsApp...</p>
                                 </div>
                             )}

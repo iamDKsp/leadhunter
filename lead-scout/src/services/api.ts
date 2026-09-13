@@ -18,11 +18,18 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-            console.error('API Error:', error.response.status, error.config.url, error.response.data);
-            localStorage.removeItem('token');
-            if (window.location.pathname !== '/login') {
-                window.location.href = '/login';
+        if (error.response) {
+            if (error.response.status === 401) {
+                // Token expired or invalid — redirect to login
+                console.error('API Auth Error:', error.config.url, error.response.data);
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                if (window.location.pathname !== '/login') {
+                    window.location.href = '/login';
+                }
+            } else if (error.response.status === 403) {
+                // Permission denied — do NOT logout, just log
+                console.warn('API Permission Denied:', error.config.url, error.response.data);
             }
         }
         return Promise.reject(error);
@@ -136,6 +143,40 @@ export const stages = {
         const response = await api.post<any[]>('/stages', stagesData);
         return response.data;
     }
+};
+
+export const accessGroups = {
+    getAll: async () => {
+        const response = await api.get('/access-groups');
+        return response.data;
+    },
+    getById: async (id: string) => {
+        const response = await api.get(`/access-groups/${id}`);
+        return response.data;
+    },
+    create: async (data: { name: string; description?: string; permissions?: any }) => {
+        const response = await api.post('/access-groups', data);
+        return response.data;
+    },
+    update: async (id: string, data: { name?: string; description?: string }) => {
+        const response = await api.put(`/access-groups/${id}`, data);
+        return response.data;
+    },
+    delete: async (id: string) => {
+        await api.delete(`/access-groups/${id}`);
+    },
+    updatePermissions: async (id: string, permissions: any) => {
+        const response = await api.put(`/access-groups/${id}/permissions`, permissions);
+        return response.data;
+    },
+    addUser: async (groupId: string, userId: string) => {
+        const response = await api.post(`/access-groups/${groupId}/users`, { userId });
+        return response.data;
+    },
+    removeUser: async (groupId: string, userId: string) => {
+        const response = await api.delete(`/access-groups/${groupId}/users/${userId}`);
+        return response.data;
+    },
 };
 
 export const whatsapp = {

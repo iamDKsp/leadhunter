@@ -33,7 +33,7 @@ export interface User {
     id: string;
     name: string;
     email: string;
-    role?: 'ADMIN' | 'USER' | 'SUPER_ADMIN' | 'SELLER';
+    role?: 'SUPER_ADMIN' | 'SELLER';
     interfacePreference?: 'PC' | 'MOBILE' | 'BOTH';
     accessGroupId?: string | null;
     useOwnWhatsApp?: boolean;

@@ -23,7 +23,7 @@ async function main() {
 
         // Check Permissions logic simulation
         let canViewAll = false;
-        if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
+        if (user.role === 'SUPER_ADMIN') {
             canViewAll = true;
             console.log(`  canViewAllLeads: TRUE (Role Override)`);
         } else {

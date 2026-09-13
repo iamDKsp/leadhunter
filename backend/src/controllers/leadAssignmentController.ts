@@ -285,7 +285,6 @@ export const getSellers = async (req: AuthRequest, res: Response) => {
             where: {
                 OR: [
                     { role: 'SELLER' },
-                    { role: 'ADMIN' },
                     { role: 'SUPER_ADMIN' }
                 ]
             },

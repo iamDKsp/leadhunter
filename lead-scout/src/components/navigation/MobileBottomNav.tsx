@@ -1,9 +1,11 @@
 import React from 'react';
+import { User } from '@/types/auth';
+import { canViewPage } from '@/utils/permissions';
 import {
   MessageSquare,
   Layers,
   LayoutDashboard,
-  User,
+  User as UserIcon,
   MoreHorizontal
 } from 'lucide-react';
 import { useWhatsApp } from '@/context/WhatsAppContext';
@@ -14,6 +16,7 @@ interface MobileBottomNavProps {
   onViewChange: (view: string) => void;
   onOpenMore: () => void;
   isHidden?: boolean;
+  user?: User | null;
 }
 
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
@@ -21,6 +24,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onViewChange,
   onOpenMore,
   isHidden = false,
+  user,
 }) => {
   const { pendingNotifications } = useWhatsApp();
 
@@ -48,14 +52,16 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
     {
       id: 'personal',
       label: 'Pessoal',
-      icon: User,
+      icon: UserIcon,
     },
   ];
+
+  const visibleNavItems = navItems.filter(item => canViewPage(user, item.id));
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-xl border-t border-border/50 md:hidden pb-[env(safe-area-inset-bottom,0px)] shadow-2xl">
       <div className="flex items-center justify-around h-16 px-2">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeView === item.id;
 

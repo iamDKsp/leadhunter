@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { CyberRadarLoader } from '@/components/ui/CyberRadarLoader';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { UserPlus, Users, Search, Check, X } from 'lucide-react';
@@ -160,8 +161,6 @@ export function LeadAssignmentModal({
         switch (seller.role) {
             case 'SUPER_ADMIN':
                 return <Badge variant="default" className="bg-yellow-500/20 text-yellow-500 text-xs">Super Admin</Badge>;
-            case 'ADMIN':
-                return <Badge variant="secondary" className="text-xs">Admin</Badge>;
             default:
                 return <Badge variant="outline" className="text-xs">Vendedor</Badge>;
         }
@@ -202,8 +201,8 @@ export function LeadAssignmentModal({
                 {/* Sellers List */}
                 <ScrollArea className="h-64">
                     {loading ? (
-                        <div className="flex items-center justify-center h-full">
-                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                        <div className="flex items-center justify-center h-full py-4">
+                            <CyberRadarLoader size="sm" label={null} />
                         </div>
                     ) : filteredSellers.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full text-muted-foreground">

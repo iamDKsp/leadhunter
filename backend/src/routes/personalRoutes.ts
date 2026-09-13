@@ -13,6 +13,7 @@ import {
     createActivity,
     getPerformance,
 } from '../controllers/personalController';
+import { checkPermission } from '../middleware/authorization';
 
 const router = express.Router();
 
@@ -20,22 +21,22 @@ const router = express.Router();
 router.use(authenticateToken);
 
 // Metrics & Data
-router.get('/metrics', getMetrics);
-router.get('/hot-leads', getHotLeads);
-router.get('/performance', getPerformance);
+router.get('/metrics', checkPermission('canViewPersonal'), getMetrics);
+router.get('/hot-leads', checkPermission('canViewPersonal'), getHotLeads);
+router.get('/performance', checkPermission('canViewPersonal'), getPerformance);
 
 // Tasks
-router.get('/tasks', getTasks);
-router.post('/tasks', createTask);
-router.patch('/tasks/:id', updateTask);
-router.delete('/tasks/:id', deleteTask);
+router.get('/tasks', checkPermission('canManageTasks'), getTasks);
+router.post('/tasks', checkPermission('canManageTasks'), createTask);
+router.patch('/tasks/:id', checkPermission('canManageTasks'), updateTask);
+router.delete('/tasks/:id', checkPermission('canManageTasks'), deleteTask);
 
 // Goals
-router.get('/goals', getGoals);
-router.patch('/goals/:id', updateGoal);
+router.get('/goals', checkPermission('canManageGoals'), getGoals);
+router.patch('/goals/:id', checkPermission('canManageGoals'), updateGoal);
 
 // Activity
-router.get('/activity', getActivity);
-router.post('/activity', createActivity);
+router.get('/activity', checkPermission('canViewPersonal'), getActivity);
+router.post('/activity', checkPermission('canViewPersonal'), createActivity);
 
 export default router;

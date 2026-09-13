@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { CyberRadarLoader } from '@/components/ui/CyberRadarLoader';
 import MonitoringStats from "@/components/monitoring/MonitoringStats";
 import MonitoringFilters, { StatusFilter } from "@/components/monitoring/MonitoringFilters";
 import UsersTable from "@/components/monitoring/UsersTable";
@@ -130,7 +131,7 @@ export function Monitoring() {
     if (loading) {
         return (
             <div className="p-8 flex items-center justify-center min-h-[400px]">
-                <div className="text-muted-foreground">Carregando...</div>
+                <CyberRadarLoader size="lg" label="RASTREAMENTO ATIVO..." />
             </div>
         );
     }

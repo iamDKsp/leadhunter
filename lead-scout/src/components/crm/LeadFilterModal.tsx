@@ -118,7 +118,7 @@ export function LeadFilterModal({
                     </div>
 
                     {/* Responsible - Only for Admins or Permitted Users */}
-                    {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.permissions?.canViewAllLeads) && (
+                    {(user?.role === 'SUPER_ADMIN' || user?.permissions?.canViewAllLeads) && (
                         <div className="grid gap-2">
                             <Label htmlFor="responsible" className="text-left">
                                 Responsável

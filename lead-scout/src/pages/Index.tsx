@@ -79,7 +79,7 @@ const Index = () => {
       setActiveView(view);
     } else {
       // Default routing based on role
-      if (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') {
+      if (user?.role === 'SUPER_ADMIN') {
         setActiveView('management');
         navigate('/management', { replace: true });
       } else {
@@ -348,7 +348,7 @@ const Index = () => {
         )}>
           {activeView === 'search' ? (
             <GoogleMapsSearch onLeadAdded={(newLead) => {
-              const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+              const isAdmin = user?.role === 'SUPER_ADMIN';
               const message = isAdmin
                 ? "Lead enviado para triagem. Verifique na aba 'Gestão de Leads'."
                 : "Lead salvo com sucesso! Aguarde a aprovação.";
@@ -367,6 +367,7 @@ const Index = () => {
         onViewChange={handleViewChange}
         onOpenMore={() => setIsMoreSheetOpen(true)}
         isHidden={activeView === 'conversas' && isChatActive}
+        user={user}
       />
 
       {/* Mobile More Bottom Sheet */}

@@ -166,7 +166,7 @@ export const requireRole = (...roles: string[]) => {
 export const requireSuperAdmin = requireRole('SUPER_ADMIN');
 
 // Shortcut for admin or super admin
-export const requireAdmin = requireRole('SUPER_ADMIN', 'ADMIN');
+export const requireAdmin = requireRole('SUPER_ADMIN');
 
 // Get user permissions (utility function)
 export const getUserPermissions = async (userId: string) => {
@@ -234,12 +234,12 @@ export const getUserPermissions = async (userId: string) => {
         canExportLeads: perms?.canExportLeads ?? false,
 
         // CRM Permissions
-        canViewCRM: perms?.canViewCRM ?? true,
-        canMoveCards: perms?.canMoveCards ?? true,
+        canViewCRM: perms?.canViewCRM ?? false,
+        canMoveCards: perms?.canMoveCards ?? false,
         canManageStages: perms?.canManageStages ?? false,
 
         // Module Permissions
-        canViewDashboard: perms?.canViewDashboard ?? true,
+        canViewDashboard: perms?.canViewDashboard ?? false,
         canViewCosts: perms?.canViewCosts ?? false,
 
         // Chat Permissions
@@ -258,9 +258,9 @@ export const getUserPermissions = async (userId: string) => {
         canManageIntegrations: perms?.canManageIntegrations ?? false,
 
         // Personal & Monitoring
-        canViewPersonal: perms?.canViewPersonal ?? true,
-        canManageTasks: perms?.canManageTasks ?? true,
-        canManageGoals: perms?.canManageGoals ?? true,
+        canViewPersonal: perms?.canViewPersonal ?? false,
+        canManageTasks: perms?.canManageTasks ?? false,
+        canManageGoals: perms?.canManageGoals ?? false,
         canViewMonitoring: perms?.canViewMonitoring ?? false,
         canUseOwnWhatsApp: perms?.canUseOwnWhatsApp ?? false
     };

@@ -4,7 +4,7 @@ export const hasPermission = (user: User | undefined | null, permission: keyof P
     if (!user) return false;
 
     // Admins have full access
-    if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') return true;
+    if (user.role === 'SUPER_ADMIN') return true;
 
     // If permissions object exists, check it
     if (user.permissions) {
@@ -19,7 +19,7 @@ export const hasPermission = (user: User | undefined | null, permission: keyof P
 export const canViewPage = (user: User | undefined | null, viewId: string): boolean => {
     if (!user) return false;
 
-    if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') return true;
+    if (user.role === 'SUPER_ADMIN') return true;
 
     // Mapping view IDs to permissions
     switch (viewId) {

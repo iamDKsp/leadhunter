@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { io } from 'socket.io-client';
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { CyberRadarLoader } from '@/components/ui/CyberRadarLoader';
 import api from '@/services/api';
 
 interface WhatsAppConnectModalProps {
@@ -97,8 +98,7 @@ export function WhatsAppConnectModal({ isOpen, onClose }: WhatsAppConnectModalPr
                 <div className="flex flex-col items-center justify-center p-6 space-y-4">
                     {loading && status !== 'CONNECTED' && (
                         <div className="flex flex-col items-center">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-                            <p className="text-sm text-muted-foreground">Carregando...</p>
+                            <CyberRadarLoader size="md" label="CONECTANDO..." />
                         </div>
                     )}
 

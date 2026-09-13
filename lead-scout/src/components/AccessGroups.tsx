@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { CyberRadarLoader } from '@/components/ui/CyberRadarLoader';
+import { accessGroups as accessGroupsApi, users as usersApi } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -152,20 +154,9 @@ export function AccessGroups() {
     const [permissions, setPermissions] = useState<Omit<Permission, 'id'>>(DEFAULT_PERMISSIONS);
     const [userSearchQuery, setUserSearchQuery] = useState('');
 
-    const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:3000');
-
-    const getAuthHeaders = () => ({
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-    });
-
     const fetchGroups = async () => {
         try {
-            const response = await fetch(`${API_URL}/access-groups`, {
-                headers: getAuthHeaders()
-            });
-            if (!response.ok) throw new Error('Failed to fetch groups');
-            const data = await response.json();
+            const data = await accessGroupsApi.getAll();
             setGroups(data);
         } catch (error) {
             console.error('Error fetching groups:', error);
@@ -177,11 +168,7 @@ export function AccessGroups() {
 
     const fetchAllUsers = async () => {
         try {
-            const response = await fetch(`${API_URL}/auth/users`, {
-                headers: getAuthHeaders()
-            });
-            if (!response.ok) throw new Error('Failed to fetch users');
-            const data = await response.json();
+            const data = await usersApi.getAll();
             setAllUsers(data);
         } catch (error) {
             console.error('Error fetching users:', error);
@@ -224,17 +211,11 @@ export function AccessGroups() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const url = selectedGroup
-                ? `${API_URL}/access-groups/${selectedGroup.id}`
-                : `${API_URL}/access-groups`;
-
-            const response = await fetch(url, {
-                method: selectedGroup ? 'PUT' : 'POST',
-                headers: getAuthHeaders(),
-                body: JSON.stringify(formData)
-            });
-
-            if (!response.ok) throw new Error('Failed to save group');
+            if (selectedGroup) {
+                await accessGroupsApi.update(selectedGroup.id, formData);
+            } else {
+                await accessGroupsApi.create(formData);
+            }
 
             toast.success(selectedGroup ? 'Grupo atualizado!' : 'Grupo criado!');
             setDialogOpen(false);
@@ -248,13 +229,7 @@ export function AccessGroups() {
     const handleSavePermissions = async () => {
         if (!selectedGroup) return;
         try {
-            const response = await fetch(`${API_URL}/access-groups/${selectedGroup.id}/permissions`, {
-                method: 'PUT',
-                headers: getAuthHeaders(),
-                body: JSON.stringify(permissions)
-            });
-
-            if (!response.ok) throw new Error('Failed to save permissions');
+            await accessGroupsApi.updatePermissions(selectedGroup.id, permissions);
 
             toast.success('Permissões atualizadas!');
             setPermissionDialogOpen(false);
@@ -268,13 +243,7 @@ export function AccessGroups() {
     const handleAddUserToGroup = async (userId: string) => {
         if (!selectedGroup) return;
         try {
-            const response = await fetch(`${API_URL}/access-groups/${selectedGroup.id}/users`, {
-                method: 'POST',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({ userId })
-            });
-
-            if (!response.ok) throw new Error('Failed to add user');
+            await accessGroupsApi.addUser(selectedGroup.id, userId);
 
             toast.success('Usuário adicionado ao grupo!');
             fetchGroups();
@@ -288,12 +257,7 @@ export function AccessGroups() {
     const handleRemoveUserFromGroup = async (userId: string) => {
         if (!selectedGroup) return;
         try {
-            const response = await fetch(`${API_URL}/access-groups/${selectedGroup.id}/users/${userId}`, {
-                method: 'DELETE',
-                headers: getAuthHeaders()
-            });
-
-            if (!response.ok) throw new Error('Failed to remove user');
+            await accessGroupsApi.removeUser(selectedGroup.id, userId);
 
             toast.success('Usuário removido do grupo!');
             fetchGroups();
@@ -307,12 +271,7 @@ export function AccessGroups() {
     const handleDelete = async (id: string) => {
         if (!confirm('Tem certeza que deseja excluir este grupo?')) return;
         try {
-            const response = await fetch(`${API_URL}/access-groups/${id}`, {
-                method: 'DELETE',
-                headers: getAuthHeaders()
-            });
-
-            if (!response.ok) throw new Error('Failed to delete group');
+            await accessGroupsApi.delete(id);
 
             toast.success('Grupo excluído!');
             fetchGroups();
@@ -371,7 +330,7 @@ export function AccessGroups() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <CyberRadarLoader size="md" label="CARREGANDO..." />
             </div>
         );
     }

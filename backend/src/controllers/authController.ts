@@ -105,6 +105,11 @@ export const createUser = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'User already exists' });
         }
 
+        // Prevent creating SUPER_ADMIN via API
+        if (role === 'SUPER_ADMIN') {
+            return res.status(403).json({ error: 'Cannot create SUPER_ADMIN users' });
+        }
+
         const passwordHash = await hashPassword(password);
         const user = await prisma.user.create({
             data: {
@@ -171,6 +176,11 @@ export const updateUser = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { name, avatar, email, password, interfacePreference, role, accessGroupId, useOwnWhatsApp, customTag, customTagColor } = req.body;
+
+        // Prevent promoting to SUPER_ADMIN via API
+        if (role === 'SUPER_ADMIN') {
+            return res.status(403).json({ error: 'Cannot promote users to SUPER_ADMIN' });
+        }
 
         const data: any = {};
         if (name) data.name = name;

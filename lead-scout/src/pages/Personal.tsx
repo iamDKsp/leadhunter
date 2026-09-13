@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { CyberRadarLoader } from '@/components/ui/CyberRadarLoader';
 import { Target, Phone, TrendingUp, Flame } from "lucide-react";
 import WelcomeSection from "@/components/personal/WelcomeSection";
 import MetricCard from "@/components/personal/MetricCard";
@@ -149,7 +150,7 @@ export function Personal({ userName = "Usuário" }: PersonalProps) {
     if (loading) {
         return (
             <div className="p-8 flex items-center justify-center min-h-[400px]">
-                <div className="text-muted-foreground">Carregando...</div>
+                <CyberRadarLoader size="lg" label="RASTREAMENTO ATIVO..." />
             </div>
         );
     }
