@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Trash2, Edit2, Plus, Shield, Users, Check, X, UserPlus, UserMinus, Search } from 'lucide-react';
+import { Trash2, Edit2, Plus, Shield, Users, Check, X, UserPlus, UserMinus, Search, Database, Kanban, MessageSquare, UserCheck, Sliders, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { PermissionPreviewPanel } from './access-control/PermissionPreviewPanel';
 import {
     Dialog,
     DialogContent,
@@ -153,6 +154,7 @@ export function AccessGroups() {
     const [formData, setFormData] = useState({ name: '', description: '' });
     const [permissions, setPermissions] = useState<Omit<Permission, 'id'>>(DEFAULT_PERMISSIONS);
     const [userSearchQuery, setUserSearchQuery] = useState('');
+    const [hoveredPermission, setHoveredPermission] = useState<string>('canSearchLeads');
 
     const fetchGroups = async () => {
         try {
@@ -193,6 +195,7 @@ export function AccessGroups() {
 
     const handleOpenPermissionDialog = (group: AccessGroup) => {
         setSelectedGroup(group);
+        setHoveredPermission('canSearchLeads');
         if (group.permissions) {
             const { id, ...rest } = group.permissions;
             setPermissions(rest);
@@ -301,28 +304,46 @@ export function AccessGroups() {
     const usersInGroup = filteredUsers.filter(u => u.accessGroupId === selectedGroup?.id);
     const usersAvailable = filteredUsers.filter(u => !u.accessGroupId || u.accessGroupId !== selectedGroup?.id);
 
-    const renderPermissionSection = (category: string, title: string) => {
+    const renderPermissionSection = (category: string, title: string, Icon: LucideIcon) => {
         const categoryPermissions = Object.entries(PERMISSION_LABELS)
             .filter(([_, info]) => info.category === category);
 
         return (
-            <div className="space-y-3">
-                <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">{title}</h4>
-                {categoryPermissions.map(([key, info]) => (
-                    <div key={key} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-secondary/50 transition-colors">
-                        <div className="flex-1">
-                            <Label htmlFor={key} className="font-medium cursor-pointer">{info.label}</Label>
-                            <p className="text-xs text-muted-foreground">{info.description}</p>
-                        </div>
-                        <Checkbox
-                            id={key}
-                            checked={permissions[key as keyof typeof permissions]}
-                            onCheckedChange={(checked) =>
-                                setPermissions(prev => ({ ...prev, [key]: !!checked }))
-                            }
-                        />
-                    </div>
-                ))}
+            <div className="space-y-2">
+                <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 pb-1">
+                    <Icon className="w-3.5 h-3.5 text-primary" />
+                    <span>{title}</span>
+                </h4>
+                <div className="space-y-1">
+                    {categoryPermissions.map(([key, info]) => {
+                        const isHovered = hoveredPermission === key;
+                        return (
+                            <div
+                                key={key}
+                                onMouseEnter={() => setHoveredPermission(key)}
+                                onClick={() => setHoveredPermission(key)}
+                                className={`flex items-center justify-between py-2 px-3 rounded-lg transition-all cursor-pointer ${
+                                    isHovered
+                                        ? 'bg-primary/15 border border-primary/40 shadow-sm'
+                                        : 'hover:bg-secondary/60 border border-transparent'
+                                }`}
+                            >
+                                <div className="flex-1 pr-2">
+                                    <Label htmlFor={key} className="font-medium text-xs cursor-pointer block">{info.label}</Label>
+                                    <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">{info.description}</p>
+                                </div>
+                                <Checkbox
+                                    id={key}
+                                    checked={permissions[key as keyof typeof permissions]}
+                                    onCheckedChange={(checked) =>
+                                        setPermissions(prev => ({ ...prev, [key]: !!checked }))
+                                    }
+                                    onClick={(e) => e.stopPropagation()}
+                                />
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
         );
     };
@@ -518,29 +539,41 @@ export function AccessGroups() {
 
             {/* Permission Dialog */}
             <Dialog open={permissionDialogOpen} onOpenChange={setPermissionDialogOpen}>
-                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                <DialogContent className="max-w-5xl max-h-[88vh] flex flex-col p-6">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
-                            <Shield className="w-5 h-5" />
-                            Permissões: {selectedGroup?.name}
+                            <Shield className="w-5 h-5 text-primary" />
+                            <span>Permissões: {selectedGroup?.name}</span>
                         </DialogTitle>
                     </DialogHeader>
 
-                    <div className="space-y-6 py-4">
-                        {renderPermissionSection('leads', '📊 Leads & Dados')}
-                        <Separator />
-                        {renderPermissionSection('crm', '🔄 CRM & Vendas')}
-                        <Separator />
-                        {renderPermissionSection('chat', '💬 Chat & WhatsApp')}
-                        <Separator />
-                        {renderPermissionSection('personal', '👤 Pessoal & Monitoramento')}
-                        <Separator />
-                        {renderPermissionSection('system', '⚙️ Sistema & Módulos')}
-                        <Separator />
-                        {renderPermissionSection('admin', '🛡️ Administração')}
+                    {/* Split View */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 py-2 flex-1 min-h-0 overflow-hidden">
+                        {/* Left Column: Permissions List */}
+                        <div className="lg:col-span-7 overflow-y-auto max-h-[58vh] pr-2 space-y-4">
+                            {renderPermissionSection('leads', 'Leads & Dados', Database)}
+                            <Separator />
+                            {renderPermissionSection('crm', 'CRM & Vendas', Kanban)}
+                            <Separator />
+                            {renderPermissionSection('chat', 'Chat & WhatsApp', MessageSquare)}
+                            <Separator />
+                            {renderPermissionSection('personal', 'Pessoal & Monitoramento', UserCheck)}
+                            <Separator />
+                            {renderPermissionSection('system', 'Sistema & Módulos', Sliders)}
+                            <Separator />
+                            {renderPermissionSection('admin', 'Administração', ShieldCheck)}
+                        </div>
+
+                        {/* Right Column: Interactive Code Mockup Live Preview */}
+                        <div className="hidden lg:flex lg:col-span-5 h-[58vh] flex-col">
+                            <PermissionPreviewPanel
+                                permissionKey={hoveredPermission}
+                                permissionInfo={PERMISSION_LABELS[hoveredPermission]}
+                            />
+                        </div>
                     </div>
 
-                    <div className="flex gap-2 justify-end pt-4 border-t">
+                    <div className="flex gap-2 justify-end pt-3 border-t">
                         <Button variant="outline" onClick={() => setPermissionDialogOpen(false)}>
                             Cancelar
                         </Button>

@@ -270,7 +270,7 @@ export function CyberRadarLoader({
 
     rafRef.current = requestAnimationFrame(drawFrame);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [canvasSize, radius]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [canvasSize]);
 
   return (
     <div className={cn('flex flex-col items-center justify-center', className)}>
