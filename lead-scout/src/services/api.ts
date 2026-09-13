@@ -75,7 +75,7 @@ export const companies = {
     delete: async (id: string) => {
         await api.delete(`/companies/${id}`);
     },
-    search: async (query: string, options?: { type?: string, limit?: number, minRating?: number, maxRating?: number, minReviews?: number, openNow?: boolean, mustHavePhone?: boolean, matchTermInName?: boolean, radius?: number, location?: string }) => {
+    search: async (query: string, options?: { type?: string, limit?: number, minRating?: number, maxRating?: number, minReviews?: number, openNow?: boolean, mustHavePhone?: boolean, matchTermInName?: boolean, hideSaved?: boolean, radius?: number, location?: string }) => {
         const response = await api.get(`/companies/search`, { params: { query, ...options } });
         return response.data;
     },

@@ -56,7 +56,8 @@ export const searchPlaces = async (query: string, options: SearchOptions = {}): 
     let allResults: PlaceResult[] = [];
     let pageToken: string | undefined = undefined;
     let pageCount = 0;
-    const MAX_PAGES = Math.ceil(limit / 20) + 1;
+    // O Google Places Text Search permite até 3 páginas (60 resultados no total).
+    const MAX_PAGES = Math.min(Math.ceil(limit / 20) + 1, 3);
 
     const url = 'https://places.googleapis.com/v1/places:searchText';
     const fieldMask = [
@@ -72,7 +73,8 @@ export const searchPlaces = async (query: string, options: SearchOptions = {}): 
         'places.userRatingCount',
         'places.regularOpeningHours',
         'places.photos',
-        'places.types'
+        'places.types',
+        'nextPageToken'
     ].join(',');
 
     try {
@@ -80,12 +82,12 @@ export const searchPlaces = async (query: string, options: SearchOptions = {}): 
             const body: any = {
                 textQuery: query,
                 languageCode: 'pt-BR',
-                pageSize: Math.min(limit, 20)
+                pageSize: 20
             };
 
             if (pageToken) {
                 body.pageToken = pageToken;
-                await sleep(1000);
+                await sleep(1500);
             }
 
             if (options.openNow) {
@@ -113,7 +115,7 @@ export const searchPlaces = async (query: string, options: SearchOptions = {}): 
                 }
             }
 
-            console.log(`[GoogleMaps] Chamando Places API (New): "${query}" (Página ${pageCount + 1})`);
+            console.log(`[GoogleMaps] Chamando Places API (New): "${query}" (Página ${pageCount + 1}/${MAX_PAGES})`);
             const response = await axios.post(url, body, {
                 headers: {
                     'Content-Type': 'application/json',
@@ -145,8 +147,9 @@ export const searchPlaces = async (query: string, options: SearchOptions = {}): 
             allResults = [...allResults, ...mapped];
             pageToken = response.data.nextPageToken;
             pageCount++;
+            console.log(`[GoogleMaps] Página ${pageCount} retornou ${places.length} locais. Tem nextPageToken? ${!!pageToken} (Total acumulado: ${allResults.length})`);
 
-        } while (pageToken && allResults.length < limit * 2 && pageCount < MAX_PAGES);
+        } while (pageToken && allResults.length < limit && pageCount < MAX_PAGES);
 
     } catch (error: any) {
         const errorData = error.response?.data?.error;

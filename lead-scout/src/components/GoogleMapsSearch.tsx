@@ -33,6 +33,7 @@ export function GoogleMapsSearch({ onLeadAdded }: GoogleMapsSearchProps) {
     const [openNow, setOpenNow] = useState(false);
     const [mustHavePhone, setMustHavePhone] = useState(true);
     const [matchTermInName, setMatchTermInName] = useState(false);
+    const [hideSaved, setHideSaved] = useState(false);
     const [radius, setRadius] = useState("");
     const [isLocating, setIsLocating] = useState(false);
     const [gpsLocation, setGpsLocation] = useState<{ lat: number; lng: number; label: string } | null>(null);
@@ -112,6 +113,7 @@ export function GoogleMapsSearch({ onLeadAdded }: GoogleMapsSearchProps) {
                 openNow: openNow,
                 mustHavePhone: mustHavePhone,
                 matchTermInName: matchTermInName,
+                hideSaved: hideSaved,
                 radius: radius ? parseInt(radius) : (gpsLocation ? 5000 : undefined),
                 location: locationParam,
             });
@@ -377,6 +379,19 @@ export function GoogleMapsSearch({ onLeadAdded }: GoogleMapsSearchProps) {
                                             </Badge>
                                         </div>
 
+                                        <div className="flex items-center space-x-2">
+                                            <input
+                                                type="checkbox"
+                                                id="hideSaved"
+                                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                                                checked={hideSaved}
+                                                onChange={(e) => setHideSaved(e.target.checked)}
+                                            />
+                                            <label htmlFor="hideSaved" className="text-sm font-medium cursor-pointer" title="Oculta empresas que você já importou anteriormente para o CRM">
+                                                Ocultar já salvos
+                                            </label>
+                                        </div>
+
                                         <div className="flex items-center space-x-2 opacity-50 cursor-not-allowed" title="Em breve">
                                             <div className="h-4 w-4 rounded border border-gray-300 flex items-center justify-center"></div>
                                             <label className="text-sm font-medium text-gray-400">Com Site</label>
@@ -483,9 +498,14 @@ export function GoogleMapsSearch({ onLeadAdded }: GoogleMapsSearchProps) {
             </div>
 
             {results.length > 0 && (
-                <p className="text-center text-muted-foreground text-sm mt-4">
-                    {results.length} resultados encontrados
-                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2 text-muted-foreground text-sm mt-4 text-center">
+                    <span>{results.length} resultados encontrados</span>
+                    {results.some(r => r.saved) && (
+                        <span className="text-amber-500 font-medium">
+                            ({results.filter(r => r.saved).length} já salvos no CRM)
+                        </span>
+                    )}
+                </div>
             )}
         </div>
     );

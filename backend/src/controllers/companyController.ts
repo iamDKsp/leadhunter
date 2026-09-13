@@ -6,7 +6,7 @@ import { getUserPermissions } from '../middleware/authorization';
 
 export const searchCompanies = async (req: AuthRequest, res: Response) => {
     try {
-        const { query, type, limit, minRating, maxRating, minReviews, openNow, radius, location, status, mustHavePhone, matchTermInName } = req.query;
+        const { query, type, limit, minRating, maxRating, minReviews, openNow, radius, location, status, mustHavePhone, matchTermInName, hideSaved } = req.query;
 
         if (!query) {
             return res.status(400).json({ error: 'Query parameter is required' });
@@ -53,10 +53,14 @@ export const searchCompanies = async (req: AuthRequest, res: Response) => {
 
         const existingSet = new Set(existingCompanies.map(c => c.googlePlaceId));
 
-        const enrichedResults = results.map(r => ({
+        let enrichedResults = results.map(r => ({
             ...r,
             saved: existingSet.has(r.place_id)
         }));
+
+        if (hideSaved === 'true') {
+            enrichedResults = enrichedResults.filter(r => !r.saved);
+        }
 
         res.json(enrichedResults);
     } catch (error: any) {
