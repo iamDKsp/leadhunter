@@ -11,9 +11,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import api, { users } from '@/services/api';
+import { getUserAvatarUrl } from "@/utils/media";
 
 interface Seller {
     id: string;
@@ -220,20 +221,17 @@ export function LeadAssignmentModal({
                                         : 'hover:bg-secondary border border-transparent'
                                         }`}
                                 >
-                                    <Avatar className="w-10 h-10 border border-border/50">
-                                        {seller.avatar ? (
-                                            <img
-                                                src={seller.avatar.startsWith('http') || seller.avatar.startsWith('/')
-                                                    ? `${seller.avatar.startsWith('/') ? import.meta.env.VITE_API_URL || 'http://localhost:3000' : ''}${seller.avatar}`
-                                                    : `https://api.dicebear.com/7.x/avataaars/svg?seed=${seller.avatar}`}
+                                    <Avatar className="w-10 h-10 border border-border/50 shrink-0">
+                                        {seller.avatar && (
+                                            <AvatarImage
+                                                src={getUserAvatarUrl(seller.avatar)}
                                                 alt={seller.name || "Avatar"}
-                                                className="w-full h-full object-cover"
+                                                className="object-cover"
                                             />
-                                        ) : (
-                                            <AvatarFallback className="bg-primary/20 text-primary">
-                                                {getInitials(seller.name, seller.email)}
-                                            </AvatarFallback>
                                         )}
+                                        <AvatarFallback className="bg-primary/20 text-primary">
+                                            {getInitials(seller.name, seller.email)}
+                                        </AvatarFallback>
                                     </Avatar>
                                     <div className="flex-1 text-left">
                                         <p className="font-medium capitalize">{seller.name || seller.email}</p>

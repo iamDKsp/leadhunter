@@ -43,11 +43,17 @@ export interface SearchOptions {
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+export interface SearchPlacesResponse {
+    results: PlaceResult[];
+    pagesCount: number;
+    totalRawResults: number;
+}
+
 /**
  * Busca empresas exclusivamente via Places API (New) - places.googleapis.com/v1/places:searchText
- * Retorna os telefones diretamente em lote, sem requisições adicionais de detalhes.
+ * Retorna os telefones diretamente em lote com estatísticas de requisições reais.
  */
-export const searchPlaces = async (query: string, options: SearchOptions = {}): Promise<PlaceResult[]> => {
+export const searchPlacesWithStats = async (query: string, options: SearchOptions = {}): Promise<SearchPlacesResponse> => {
     if (!GOOGLE_MAPS_API_KEY) {
         throw new Error('Google Maps API Key is missing');
     }
@@ -194,7 +200,19 @@ export const searchPlaces = async (query: string, options: SearchOptions = {}): 
         }
     }
 
-    return filtered.slice(0, limit);
+    return {
+        results: filtered.slice(0, limit),
+        pagesCount: Math.max(pageCount, 1),
+        totalRawResults: allResults.length
+    };
+};
+
+/**
+ * Wrapper de compatibilidade para searchPlaces
+ */
+export const searchPlaces = async (query: string, options: SearchOptions = {}): Promise<PlaceResult[]> => {
+    const { results } = await searchPlacesWithStats(query, options);
+    return results;
 };
 
 /**

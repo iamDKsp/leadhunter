@@ -277,8 +277,8 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
 
 export const uploadAvatar = async (req: AuthRequest, res: Response) => {
     try {
-        const userId = req.user?.userId;
-        if (!userId) {
+        const callerId = req.user?.userId;
+        if (!callerId) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
 
@@ -286,17 +286,34 @@ export const uploadAvatar = async (req: AuthRequest, res: Response) => {
             return res.status(400).json({ error: 'No file uploaded' });
         }
 
-        // Generate the full URL for the uploaded file
-        // Assuming the server is running on the same host, relative path should work for frontend if handled correctly,
-        // but storing the full path or a specific identifier is better.
-        // Here we store the relative path from the server root which the frontend can prepend the API URL to.
         const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+        const targetUserId = req.body?.userId;
+        const standalone = req.query?.standalone === 'true' || req.body?.standalone === 'true';
 
-        // Update user profile
-        await prisma.user.update({
-            where: { id: userId },
-            data: { avatar: avatarUrl }
-        });
+        // If standalone, just return the uploaded url (e.g. for creating a user before they exist in DB)
+        if (standalone) {
+            return res.json({ avatar: avatarUrl });
+        }
+
+        // Target user: either specified in body (if admin/has permission) or the authenticated user
+        let userIdToUpdate = callerId;
+        if (targetUserId) {
+            const userPermissions = await getUserPermissions(callerId);
+            const caller = await prisma.user.findUnique({ where: { id: callerId } });
+            const isAdmin = caller?.role === 'SUPER_ADMIN' || caller?.role === 'ADMIN';
+
+            if (targetUserId !== callerId && !userPermissions?.canManageUsers && !isAdmin) {
+                return res.status(403).json({ error: 'Forbidden: Cannot update another user avatar' });
+            }
+            userIdToUpdate = targetUserId;
+        }
+
+        if (userIdToUpdate) {
+            await prisma.user.update({
+                where: { id: userIdToUpdate },
+                data: { avatar: avatarUrl }
+            });
+        }
 
         res.json({ avatar: avatarUrl });
     } catch (error) {

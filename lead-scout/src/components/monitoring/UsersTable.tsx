@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import UserStatusBadge from "./UserStatusBadge";
 import ChatHistory from "./ChatHistory";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getUserAvatarUrl, getUserInitials } from "@/utils/media";
 
 interface Message {
     id: string;
@@ -23,6 +25,7 @@ interface User {
     id: string;
     name: string;
     email: string;
+    avatar?: string;
     status: "online" | "away" | "offline";
     lastSeen: string;
     sessionDuration: string;
@@ -93,9 +96,18 @@ const UsersTable = ({ users }: UsersTableProps) => {
                             </div>
 
                             <div className="col-span-2 flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-sm font-medium text-primary">
-                                    {user.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                                </div>
+                                <Avatar className="w-9 h-9 border border-primary/20 shadow-sm shrink-0">
+                                    {user.avatar && (
+                                        <AvatarImage
+                                            src={getUserAvatarUrl(user.avatar)}
+                                            alt={user.name || user.email}
+                                            className="object-cover"
+                                        />
+                                    )}
+                                    <AvatarFallback className="bg-primary/20 text-primary text-sm font-semibold">
+                                        {getUserInitials(user.name, user.email)}
+                                    </AvatarFallback>
+                                </Avatar>
                                 <div>
                                     <p className="font-medium text-foreground">{user.name}</p>
                                     <p className="text-xs text-muted-foreground">{user.email}</p>

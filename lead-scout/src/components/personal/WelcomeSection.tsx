@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, TrendingUp, Trophy, Target } from "lucide-react";
 import YouTubeAudioPlayer from './YouTubeAudioPlayer';
+import { getUserAvatarUrl } from '@/utils/media';
 
 interface WelcomeSectionProps {
     userName: string;
@@ -79,9 +80,7 @@ const WelcomeSection = ({ userName }: WelcomeSectionProps) => {
                         <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden border-4 border-primary/20 bg-muted flex items-center justify-center relative shadow-2xl z-10">
                             {user?.avatar ? (
                                 <img
-                                    src={user.avatar.startsWith('http') || user.avatar.startsWith('/')
-                                        ? `${user.avatar.startsWith('/') ? import.meta.env.VITE_API_URL || 'http://localhost:3000' : ''}${user.avatar}`
-                                        : `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.avatar}`}
+                                    src={getUserAvatarUrl(user.avatar)}
                                     alt="Avatar"
                                     className="w-full h-full object-cover"
                                 />

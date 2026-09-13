@@ -53,9 +53,11 @@ export const auth = {
         const response = await api.get('/auth/me');
         return response.data;
     },
-    uploadAvatar: async (file: File) => {
+    uploadAvatar: async (file: File, userId?: string, standalone?: boolean) => {
         const formData = new FormData();
         formData.append('avatar', file);
+        if (userId) formData.append('userId', userId);
+        if (standalone) formData.append('standalone', 'true');
         const response = await api.post('/auth/upload-avatar', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data'

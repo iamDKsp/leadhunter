@@ -26,7 +26,7 @@ export const createAccessGroup = async (req: AuthRequest, res: Response) => {
                     create: {} // Create with defaults
                 }
             },
-            include: { permissions: true, users: { select: { id: true, name: true, email: true } } }
+            include: { permissions: true, users: { select: { id: true, name: true, email: true, avatar: true } } }
         });
 
         res.status(201).json(accessGroup);
@@ -42,7 +42,7 @@ export const getAccessGroups = async (req: AuthRequest, res: Response) => {
         const accessGroups = await prisma.accessGroup.findMany({
             include: {
                 permissions: true,
-                users: { select: { id: true, name: true, email: true } }
+                users: { select: { id: true, name: true, email: true, avatar: true } }
             },
             orderBy: { createdAt: 'asc' }
         });
@@ -63,7 +63,7 @@ export const getAccessGroup = async (req: AuthRequest, res: Response) => {
             where: { id },
             include: {
                 permissions: true,
-                users: { select: { id: true, name: true, email: true, role: true } }
+                users: { select: { id: true, name: true, email: true, role: true, avatar: true } }
             }
         });
 
@@ -87,7 +87,7 @@ export const updateAccessGroup = async (req: AuthRequest, res: Response) => {
         const accessGroup = await prisma.accessGroup.update({
             where: { id },
             data: { name, description },
-            include: { permissions: true, users: { select: { id: true, name: true, email: true } } }
+            include: { permissions: true, users: { select: { id: true, name: true, email: true, avatar: true } } }
         });
 
         res.json(accessGroup);
@@ -166,7 +166,7 @@ export const addUserToGroup = async (req: AuthRequest, res: Response) => {
         const user = await prisma.user.update({
             where: { id: userId },
             data: { accessGroupId: id },
-            select: { id: true, name: true, email: true, accessGroupId: true }
+            select: { id: true, name: true, email: true, accessGroupId: true, avatar: true }
         });
 
         res.json(user);
@@ -184,7 +184,7 @@ export const removeUserFromGroup = async (req: AuthRequest, res: Response) => {
         const user = await prisma.user.update({
             where: { id: userId },
             data: { accessGroupId: null },
-            select: { id: true, name: true, email: true, accessGroupId: true }
+            select: { id: true, name: true, email: true, accessGroupId: true, avatar: true }
         });
 
         res.json(user);

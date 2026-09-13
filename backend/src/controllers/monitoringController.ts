@@ -80,6 +80,7 @@ export const getUsers = async (req: Request, res: Response) => {
                 id: true,
                 name: true,
                 email: true,
+                avatar: true,
                 sessions: {
                     where: { sessionEnd: null },
                     orderBy: { lastActivity: 'desc' },
@@ -136,6 +137,7 @@ export const getUsers = async (req: Request, res: Response) => {
                 id: user.id,
                 name: user.name || 'Sem nome',
                 email: user.email,
+                avatar: user.avatar,
                 status,
                 lastSeen,
                 lastSeenDate,

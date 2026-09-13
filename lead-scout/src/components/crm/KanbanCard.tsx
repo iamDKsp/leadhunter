@@ -5,8 +5,7 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
 import api from '@/services/api';
 import { toast } from 'sonner';
-import { getSelectedTemplate } from './FirstContactTemplateModal';
-import { getMediaUrl, getCompanyInitials, getCompanyAvatarColor } from '@/utils/media';
+import { getMediaUrl, getCompanyInitials, getCompanyAvatarColor, getUserAvatarUrl } from '@/utils/media';
 import { hasPermission } from '@/utils/permissions';
 
 interface KanbanCardProps {
@@ -269,9 +268,7 @@ const KanbanCard = ({ lead, isDragging, onView, onAssign, stages = [], onLeadSta
                     >
                         {responsible?.avatar ? (
                             <img
-                                src={responsible.avatar.startsWith('http') || responsible.avatar.startsWith('/')
-                                    ? `${responsible.avatar.startsWith('/') ? import.meta.env.VITE_API_URL || 'http://localhost:3000' : ''}${responsible.avatar}`
-                                    : `https://api.dicebear.com/7.x/avataaars/svg?seed=${responsible.avatar}`}
+                                src={getUserAvatarUrl(responsible.avatar)}
                                 alt="Avatar"
                                 className="w-3 h-3 rounded-full object-cover"
                             />

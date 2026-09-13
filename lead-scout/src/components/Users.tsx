@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Pencil, Trash2, Plus } from 'lucide-react';
+import { Pencil, Trash2, Plus, Camera, Loader2 } from 'lucide-react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { staggerContainer, tableRowVariants, staggerItem } from '@/lib/motion';
@@ -22,11 +22,15 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getUserAvatarUrl, getUserInitials } from "@/utils/media";
+import { auth } from "@/services/api";
 
 interface User {
     id: string;
     name: string;
     email: string;
+    avatar?: string | null;
     createdAt: string;
     interfacePreference?: string;
     useOwnWhatsApp?: boolean;
@@ -44,6 +48,8 @@ export function Users() {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [avatar, setAvatar] = useState<string | null>(null);
+    const [uploadingAvatar, setUploadingAvatar] = useState(false);
     const [interfacePreference, setInterfacePreference] = useState('BOTH');
     const [useOwnWhatsApp, setUseOwnWhatsApp] = useState(false);
     const [customTag, setCustomTag] = useState('');
@@ -71,6 +77,7 @@ export function Users() {
         setName('');
         setEmail('');
         setPassword('');
+        setAvatar(null);
         setInterfacePreference('BOTH');
         setUseOwnWhatsApp(false);
         setCustomTag('');
@@ -83,6 +90,7 @@ export function Users() {
             setEditingUser(user);
             setName(user.name);
             setEmail(user.email);
+            setAvatar(user.avatar || null);
             setInterfacePreference(user.interfacePreference || 'BOTH');
             setUseOwnWhatsApp(user.useOwnWhatsApp || false);
             setCustomTag(user.customTag || '');
@@ -92,6 +100,23 @@ export function Users() {
             resetForm();
         }
         setIsDialogOpen(true);
+    };
+
+    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            setUploadingAvatar(true);
+            const res = await auth.uploadAvatar(file, editingUser?.id, !editingUser);
+            setAvatar(res.avatar);
+            toast.success('Foto carregada com sucesso!');
+        } catch (error) {
+            console.error("Error uploading avatar:", error);
+            toast.error('Erro ao carregar foto');
+        } finally {
+            setUploadingAvatar(false);
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -105,6 +130,7 @@ export function Users() {
                 await axios.put(`${API_URL}/auth/users/${editingUser.id}`, {
                     name,
                     email,
+                    avatar,
                     interfacePreference,
                     useOwnWhatsApp,
                     customTag,
@@ -120,6 +146,7 @@ export function Users() {
                     email,
                     password,
                     name,
+                    avatar,
                     interfacePreference,
                     useOwnWhatsApp,
                     customTag,
@@ -193,6 +220,62 @@ export function Users() {
                             </DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleSubmit} className="space-y-4">
+                            {/* Avatar section */}
+                            <div className="flex flex-col items-center justify-center p-4 bg-secondary/20 rounded-xl border border-border/40 gap-3">
+                                <div className="relative group">
+                                    <Avatar className="w-20 h-20 border-2 border-primary/30 shadow-md">
+                                        {avatar && (
+                                            <AvatarImage
+                                                src={getUserAvatarUrl(avatar)}
+                                                alt={name || email}
+                                                className="object-cover"
+                                            />
+                                        )}
+                                        <AvatarFallback className="bg-primary/20 text-primary font-bold text-lg">
+                                            {getUserInitials(name, email)}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    {uploadingAvatar && (
+                                        <div className="absolute inset-0 bg-background/70 backdrop-blur-xs rounded-full flex items-center justify-center">
+                                            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <Label
+                                        htmlFor="user-avatar-upload"
+                                        className="cursor-pointer bg-secondary hover:bg-secondary/80 text-foreground text-xs px-3 py-1.5 rounded-lg border border-border/60 transition-colors flex items-center gap-1.5 font-medium"
+                                    >
+                                        <Camera className="w-3.5 h-3.5 text-primary" />
+                                        {avatar ? 'Alterar Foto' : 'Carregar Foto'}
+                                    </Label>
+                                    <Input
+                                        id="user-avatar-upload"
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={handleAvatarUpload}
+                                        disabled={uploadingAvatar}
+                                    />
+                                    {avatar && (
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setAvatar(null)}
+                                            className="text-xs text-destructive hover:bg-destructive/10 h-8 px-2.5"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5 mr-1" />
+                                            Remover Foto
+                                        </Button>
+                                    )}
+                                </div>
+                                <p className="text-[11px] text-muted-foreground text-center">
+                                    Formatos suportados: JPG, PNG, WebP (Máx 5MB)
+                                </p>
+                            </div>
+
                             <div className="space-y-2">
                                 <Label htmlFor="name">Nome</Label>
                                 <Input
@@ -298,7 +381,7 @@ export function Users() {
                     <table className="w-full min-w-[650px]">
                         <thead>
                             <tr className="border-b border-border/30">
-                                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Nome</th>
+                                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Usuário</th>
                                 <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Email</th>
                                 <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Tag</th>
                                 <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Criado em</th>
@@ -312,7 +395,23 @@ export function Users() {
                                     variants={tableRowVariants}
                                     className="hover:bg-secondary/30 transition-colors"
                                 >
-                                    <td className="px-6 py-4 font-medium text-foreground">{user.name}</td>
+                                    <td className="px-6 py-4 font-medium text-foreground">
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="w-9 h-9 border border-border/40 shadow-sm shrink-0">
+                                                {user.avatar && (
+                                                    <AvatarImage
+                                                        src={getUserAvatarUrl(user.avatar)}
+                                                        alt={user.name || user.email}
+                                                        className="object-cover"
+                                                    />
+                                                )}
+                                                <AvatarFallback className="bg-primary/20 text-primary text-xs font-semibold">
+                                                    {getUserInitials(user.name, user.email)}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <span className="truncate">{user.name || 'Sem nome'}</span>
+                                        </div>
+                                    </td>
                                     <td className="px-6 py-4 text-primary">{user.email}</td>
                                     <td className="px-6 py-4">
                                         {user.customTag ? (

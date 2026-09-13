@@ -62,3 +62,45 @@ export const getCompanyAvatarColor = (name?: string): string => {
     const index = Math.abs(hash) % AVATAR_COLORS.length;
     return AVATAR_COLORS[index];
 };
+
+/**
+ * Resolves full URL for user avatar (uploaded images, external URLs, or dicebear seed)
+ */
+export const getUserAvatarUrl = (avatar?: string | null): string => {
+    if (!avatar || !avatar.trim()) return '';
+
+    // Direct absolute URL (e.g. external CDN or already full URL)
+    if (avatar.startsWith('http://') || avatar.startsWith('https://')) {
+        return avatar;
+    }
+
+    // Relative path (e.g. /uploads/avatars/xyz.jpg or uploads/avatars/xyz.jpg)
+    if (avatar.startsWith('/') || avatar.includes('uploads/')) {
+        const normalizedPath = avatar.startsWith('/') ? avatar : `/${avatar}`;
+        const apiBase = import.meta.env.VITE_API_URL
+            ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '')
+            : (import.meta.env.PROD ? '' : 'http://localhost:3000');
+        return `${apiBase}${normalizedPath}`;
+    }
+
+    // Dicebear seed fallback
+    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(avatar)}`;
+};
+
+/**
+ * Returns initials for user name or email
+ */
+export const getUserInitials = (name?: string | null, email?: string): string => {
+    if (name && name.trim()) {
+        const parts = name.trim().split(/\s+/).filter(Boolean);
+        if (parts.length === 1) {
+            return parts[0].substring(0, 2).toUpperCase();
+        }
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    if (email && email.trim()) {
+        return email.trim().substring(0, 2).toUpperCase();
+    }
+    return 'U';
+};
+

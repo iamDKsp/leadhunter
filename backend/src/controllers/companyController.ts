@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma';
-import { searchPlaces, getPlaceDetails, downloadAndSavePlacePhoto } from '../services/googleMapsService';
+import { searchPlacesWithStats, getPlaceDetails, downloadAndSavePlacePhoto } from '../services/googleMapsService';
 import { AuthRequest } from '../middleware/auth';
 import { getUserPermissions } from '../middleware/authorization';
 
@@ -15,7 +15,7 @@ export const searchCompanies = async (req: AuthRequest, res: Response) => {
         const limitNum = limit ? parseInt(limit as string) : 20;
         const shouldFilterPhone = mustHavePhone === undefined ? true : mustHavePhone === 'true';
 
-        const results = await searchPlaces(query as string, {
+        const { results, pagesCount, totalRawResults } = await searchPlacesWithStats(query as string, {
             type: type as string,
             limit: limitNum,
             minRating: minRating ? parseFloat(minRating as string) : undefined,
@@ -28,16 +28,18 @@ export const searchCompanies = async (req: AuthRequest, res: Response) => {
             location: location as string
         });
 
-        // LOG COST
+        // LOG COST COM BASE NAS REQUISIÇÕES HTTP REAIS AO GOOGLE MAPS
         try {
-            const COST_PER_SEARCH = 0.20 * Math.ceil(limitNum / 20); // Estimated based on limit requested
+            const COST_PER_PAGE = 0.20; // R$ 0,20 (~$0.032 USD) por requisição/página (Places API New Text Search Pro/Enterprise)
+            const realPages = Math.max(pagesCount, 1);
+            const totalSearchCost = Number((realPages * COST_PER_PAGE).toFixed(2));
 
             await prisma.costLog.create({
                 data: {
                     userId: req.user?.userId,
                     query: `${query}`,
                     endpoint: 'textsearch',
-                    cost: COST_PER_SEARCH
+                    cost: totalSearchCost
                 }
             });
         } catch (costError) {
@@ -135,6 +137,23 @@ export const importCompany = async (req: AuthRequest, res: Response) => {
         let photoUrl: string | null = null;
         if (photoReference) {
             photoUrl = await downloadAndSavePlacePhoto(photoReference, details.name);
+
+            // LOG COST FOR PHOTO DOWNLOAD (Google Places API - Place Photo SKU: $0.007 USD ~ R$ 0,04)
+            if (photoUrl) {
+                try {
+                    const COST_PER_PHOTO = 0.04;
+                    await prisma.costLog.create({
+                        data: {
+                            userId: req.user?.userId,
+                            query: `Foto: ${details.name}`,
+                            endpoint: 'placephoto',
+                            cost: COST_PER_PHOTO
+                        }
+                    });
+                } catch (photoCostError) {
+                    console.error("Failed to log photo cost:", photoCostError);
+                }
+            }
         }
 
         const lat = details.geometry?.location?.lat ?? details.location?.lat ?? null;

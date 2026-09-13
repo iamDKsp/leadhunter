@@ -19,7 +19,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getUserAvatarUrl } from "@/utils/media";
 
 interface Permission {
     id: string;
@@ -61,6 +62,7 @@ interface User {
     id: string;
     name: string | null;
     email: string;
+    avatar?: string | null;
     role?: string;
     accessGroupId?: string | null;
 }
@@ -466,13 +468,23 @@ export function AccessGroups() {
                                 {/* User avatars */}
                                 {group.users.length > 0 && (
                                     <div className="flex -space-x-2">
-                                        {group.users.slice(0, 5).map(user => (
-                                            <Avatar key={user.id} className="w-8 h-8 border-2 border-background">
-                                                <AvatarFallback className="bg-primary/20 text-primary text-xs">
-                                                    {getInitials(user.name, user.email)}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                        ))}
+                                        {group.users.slice(0, 5).map(user => {
+                                            const avatarUrl = getUserAvatarUrl(user.avatar);
+                                            return (
+                                                <Avatar key={user.id} className="w-8 h-8 border-2 border-background shadow-sm">
+                                                    {avatarUrl && (
+                                                        <AvatarImage
+                                                            src={avatarUrl}
+                                                            alt={user.name || user.email}
+                                                            className="object-cover"
+                                                        />
+                                                    )}
+                                                    <AvatarFallback className="bg-primary/20 text-primary text-xs font-semibold">
+                                                        {getInitials(user.name, user.email)}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                            );
+                                        })}
                                         {group.users.length > 5 && (
                                             <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs border-2 border-background">
                                                 +{group.users.length - 5}
@@ -626,30 +638,40 @@ export function AccessGroups() {
                                     No Grupo ({usersInGroup.length})
                                 </h4>
                                 <div className="space-y-1">
-                                    {usersInGroup.map(user => (
-                                        <div
-                                            key={user.id}
-                                            className="flex items-center gap-3 p-3 rounded-lg bg-primary/10 border border-primary/20"
-                                        >
-                                            <Avatar className="w-10 h-10">
-                                                <AvatarFallback className="bg-primary/20 text-primary">
-                                                    {getInitials(user.name, user.email)}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex-1">
-                                                <p className="font-medium">{user.name || user.email}</p>
-                                                <p className="text-xs text-muted-foreground">{user.email}</p>
-                                            </div>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="text-destructive hover:bg-destructive/10"
-                                                onClick={() => handleRemoveUserFromGroup(user.id)}
+                                    {usersInGroup.map(user => {
+                                        const avatarUrl = getUserAvatarUrl(user.avatar);
+                                        return (
+                                            <div
+                                                key={user.id}
+                                                className="flex items-center gap-3 p-3 rounded-lg bg-primary/10 border border-primary/20"
                                             >
-                                                <UserMinus className="w-4 h-4" />
-                                            </Button>
-                                        </div>
-                                    ))}
+                                                <Avatar className="w-10 h-10 border border-primary/30 shrink-0">
+                                                    {avatarUrl && (
+                                                        <AvatarImage
+                                                            src={avatarUrl}
+                                                            alt={user.name || user.email}
+                                                            className="object-cover"
+                                                        />
+                                                    )}
+                                                    <AvatarFallback className="bg-primary/20 text-primary font-semibold">
+                                                        {getInitials(user.name, user.email)}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <div className="flex-1">
+                                                    <p className="font-medium">{user.name || user.email}</p>
+                                                    <p className="text-xs text-muted-foreground">{user.email}</p>
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-destructive hover:bg-destructive/10"
+                                                    onClick={() => handleRemoveUserFromGroup(user.id)}
+                                                >
+                                                    <UserMinus className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}
@@ -665,37 +687,47 @@ export function AccessGroups() {
                                 </p>
                             ) : (
                                 <div className="space-y-1">
-                                    {usersAvailable.map(user => (
-                                        <div
-                                            key={user.id}
-                                            className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary transition-colors"
-                                        >
-                                            <Avatar className="w-10 h-10">
-                                                <AvatarFallback className="bg-muted">
-                                                    {getInitials(user.name, user.email)}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex-1">
-                                                <p className="font-medium">{user.name || user.email}</p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {user.email}
-                                                    {user.accessGroupId && (
-                                                        <span className="ml-2 text-yellow-500">
-                                                            (já em outro grupo)
-                                                        </span>
-                                                    )}
-                                                </p>
-                                            </div>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="text-primary hover:bg-primary/10"
-                                                onClick={() => handleAddUserToGroup(user.id)}
+                                    {usersAvailable.map(user => {
+                                        const avatarUrl = getUserAvatarUrl(user.avatar);
+                                        return (
+                                            <div
+                                                key={user.id}
+                                                className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary transition-colors"
                                             >
-                                                <UserPlus className="w-4 h-4" />
-                                            </Button>
-                                        </div>
-                                    ))}
+                                                <Avatar className="w-10 h-10 border border-border/50 shrink-0">
+                                                    {avatarUrl && (
+                                                        <AvatarImage
+                                                            src={avatarUrl}
+                                                            alt={user.name || user.email}
+                                                            className="object-cover"
+                                                        />
+                                                    )}
+                                                    <AvatarFallback className="bg-muted font-semibold">
+                                                        {getInitials(user.name, user.email)}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <div className="flex-1">
+                                                    <p className="font-medium">{user.name || user.email}</p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {user.email}
+                                                        {user.accessGroupId && (
+                                                            <span className="ml-2 text-yellow-500">
+                                                                (já em outro grupo)
+                                                            </span>
+                                                        )}
+                                                    </p>
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-primary hover:bg-primary/10"
+                                                    onClick={() => handleAddUserToGroup(user.id)}
+                                                >
+                                                    <UserPlus className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
