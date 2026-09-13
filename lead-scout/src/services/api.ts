@@ -75,12 +75,12 @@ export const companies = {
     delete: async (id: string) => {
         await api.delete(`/companies/${id}`);
     },
-    search: async (query: string, options?: { type?: string, limit?: number, minRating?: number, maxRating?: number, minReviews?: number, openNow?: boolean, radius?: number, location?: string }) => {
+    search: async (query: string, options?: { type?: string, limit?: number, minRating?: number, maxRating?: number, minReviews?: number, openNow?: boolean, mustHavePhone?: boolean, matchTermInName?: boolean, radius?: number, location?: string }) => {
         const response = await api.get(`/companies/search`, { params: { query, ...options } });
         return response.data;
     },
-    import: async (placeId: string, folderId?: string, customData?: any) => {
-        const response = await api.post<Lead>('/companies/import', { placeId, folderId, customData });
+    import: async (placeId: string, folderId?: string, customData?: any, placeData?: any) => {
+        const response = await api.post<Lead>('/companies/import', { placeId, folderId, customData, placeData });
         return response.data;
     },
     bulkAssign: async (companyIds: string[], userId: string) => {

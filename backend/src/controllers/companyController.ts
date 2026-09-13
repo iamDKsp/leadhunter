@@ -6,13 +6,14 @@ import { getUserPermissions } from '../middleware/authorization';
 
 export const searchCompanies = async (req: AuthRequest, res: Response) => {
     try {
-        const { query, type, limit, minRating, maxRating, minReviews, openNow, radius, location, status } = req.query;
+        const { query, type, limit, minRating, maxRating, minReviews, openNow, radius, location, status, mustHavePhone, matchTermInName } = req.query;
 
         if (!query) {
             return res.status(400).json({ error: 'Query parameter is required' });
         }
 
         const limitNum = limit ? parseInt(limit as string) : 20;
+        const shouldFilterPhone = mustHavePhone === undefined ? true : mustHavePhone === 'true';
 
         const results = await searchPlaces(query as string, {
             type: type as string,
@@ -21,14 +22,14 @@ export const searchCompanies = async (req: AuthRequest, res: Response) => {
             maxRating: maxRating ? parseFloat(maxRating as string) : undefined,
             minReviews: minReviews ? parseInt(minReviews as string) : undefined,
             openNow: openNow === 'true',
+            mustHavePhone: shouldFilterPhone,
+            matchTermInName: matchTermInName === 'true',
             radius: radius ? parseInt(radius as string) : undefined,
             location: location as string
         });
 
         // LOG COST
         try {
-            const pages = Math.ceil(results.length / 20); // Logging based on returned results usually 1 page if < 20
-            // Ideally we log based on attempted pages, but result count is a fair proxy for "successful" search volume
             const COST_PER_SEARCH = 0.20 * Math.ceil(limitNum / 20); // Estimated based on limit requested
 
             await prisma.costLog.create({
@@ -58,58 +59,92 @@ export const searchCompanies = async (req: AuthRequest, res: Response) => {
         }));
 
         res.json(enrichedResults);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Search error:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: error.message || 'Erro ao buscar empresas no Google Maps' });
     }
 };
 
 export const importCompany = async (req: AuthRequest, res: Response) => {
     try {
-        const { placeId, folderId, customData } = req.body;
+        const { placeId, folderId, customData, placeData } = req.body;
 
         if (!placeId) {
             return res.status(400).json({ error: 'Place ID is required' });
         }
 
-        const details = await getPlaceDetails(placeId);
+        // Check if already exists first to avoid unnecessary API costs
+        const existing = await prisma.company.findFirst({
+            where: { googlePlaceId: placeId }
+        });
+        if (existing) {
+            return res.status(409).json({ error: 'Esta empresa já foi importada anteriormente.' });
+        }
+
+        // Use placeData if provided from search to avoid extra Place Details API billing
+        let details = placeData;
+        let didCallDetailsApi = false;
+
+        if (!details || !details.formatted_phone_number) {
+            details = await getPlaceDetails(placeId);
+            didCallDetailsApi = true;
+        }
+
         if (!details) {
-            return res.status(404).json({ error: 'Place not found' });
+            return res.status(404).json({ error: 'Empresa não encontrada no Google Maps' });
         }
 
-        // LOG COST FOR DETAILS
-        try {
-            // Place Details (Contact) cost approx $0.017 (or approx R$ 0.10) - estimating R$ 0.15 for safety
-            const COST_PER_DETAILS = 0.15;
-
-            await prisma.costLog.create({
-                data: {
-                    userId: req.user?.userId,
-                    query: `Import: ${details.name}`,
-                    endpoint: 'placedetails',
-                    cost: COST_PER_DETAILS
-                }
+        // VALIDATION: Reject closed / non-operational companies
+        if (details.business_status && details.business_status !== 'OPERATIONAL') {
+            return res.status(400).json({
+                error: 'Esta empresa está fechada (temporariamente ou permanentemente) e não pode ser importada como lead.'
             });
-        } catch (costError) {
-            console.error("Failed to log import cost:", costError);
         }
 
-        // Download and store photo locally (1 time only, server-side)
-        const photoReference = details.photos?.[0]?.photo_reference;
+        // VALIDATION: Reject companies without phone number
+        const phone = details.formatted_phone_number || details.phone;
+        if (!phone || String(phone).trim().length === 0) {
+            return res.status(400).json({
+                error: 'Esta empresa não possui número de telefone cadastrado e foi descartada.'
+            });
+        }
+
+        // LOG COST FOR DETAILS only if we actually performed the API call
+        if (didCallDetailsApi) {
+            try {
+                const COST_PER_DETAILS = 0.15;
+                await prisma.costLog.create({
+                    data: {
+                        userId: req.user?.userId,
+                        query: `Import: ${details.name}`,
+                        endpoint: 'placedetails',
+                        cost: COST_PER_DETAILS
+                    }
+                });
+            } catch (costError) {
+                console.error("Failed to log import cost:", costError);
+            }
+        }
+
+        // Download and store photo locally
+        const photoReference = details.photos?.[0]?.photo_reference || details.photo_reference;
         let photoUrl: string | null = null;
         if (photoReference) {
             photoUrl = await downloadAndSavePlacePhoto(photoReference, details.name);
         }
 
+        const lat = details.geometry?.location?.lat ?? details.location?.lat ?? null;
+        const lng = details.geometry?.location?.lng ?? details.location?.lng ?? null;
+
         const newCompany = await prisma.company.create({
             data: {
                 googlePlaceId: placeId,
                 name: details.name,
-                address: details.formatted_address,
-                phone: details.formatted_phone_number,
-                website: details.website,
-                latitude: details.geometry.location.lat,
-                longitude: details.geometry.location.lng,
+                address: details.formatted_address || details.address || 'Endereço não informado',
+                phone: phone,
+                website: details.website || null,
+                latitude: lat,
+                longitude: lng,
                 type: customData?.type || 'unknown',
                 activityBranch: customData?.activityBranch || 'unknown',
                 size: customData?.size || 'unknown',
@@ -127,7 +162,7 @@ export const importCompany = async (req: AuthRequest, res: Response) => {
         console.error('Import error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
-}
+};
 
 export const getCompanies = async (req: AuthRequest, res: Response) => {
     try {

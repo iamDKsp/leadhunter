@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import BrazilMap from "./BrazilMap";
 import { CitySelector } from "./CitySelector";
@@ -9,6 +8,36 @@ import { X, Map } from "lucide-react";
 interface GeographicFilterProps {
     onLocationSelect: (location: string | null) => void;
 }
+
+const BRAZILIAN_STATES = [
+    { sigla: "AC", nome: "Acre" },
+    { sigla: "AL", nome: "Alagoas" },
+    { sigla: "AP", nome: "Amapá" },
+    { sigla: "AM", nome: "Amazonas" },
+    { sigla: "BA", nome: "Bahia" },
+    { sigla: "CE", nome: "Ceará" },
+    { sigla: "DF", nome: "Distrito Federal" },
+    { sigla: "ES", nome: "Espírito Santo" },
+    { sigla: "GO", nome: "Goiás" },
+    { sigla: "MA", nome: "Maranhão" },
+    { sigla: "MT", nome: "Mato Grosso" },
+    { sigla: "MS", nome: "Mato Grosso do Sul" },
+    { sigla: "MG", nome: "Minas Gerais" },
+    { sigla: "PA", nome: "Pará" },
+    { sigla: "PB", nome: "Paraíba" },
+    { sigla: "PR", nome: "Paraná" },
+    { sigla: "PE", nome: "Pernambuco" },
+    { sigla: "PI", nome: "Piauí" },
+    { sigla: "RJ", nome: "Rio de Janeiro" },
+    { sigla: "RN", nome: "Rio Grande do Norte" },
+    { sigla: "RS", nome: "Rio Grande do Sul" },
+    { sigla: "RO", nome: "Rondônia" },
+    { sigla: "RR", nome: "Roraima" },
+    { sigla: "SC", nome: "Santa Catarina" },
+    { sigla: "SP", nome: "São Paulo" },
+    { sigla: "SE", nome: "Sergipe" },
+    { sigla: "TO", nome: "Tocantins" },
+];
 
 export function GeographicFilter({ onLocationSelect }: GeographicFilterProps) {
     const [selectedState, setSelectedState] = useState<string | null>(null);
@@ -25,13 +54,6 @@ export function GeographicFilter({ onLocationSelect }: GeographicFilterProps) {
 
         setSelectedState(stateSigla);
         setSelectedCity(null); // Reset city when state changes
-
-        // We don't verify location just with state, we wait for city or user action? 
-        // Requirement says "after selecting state, open new list for city".
-        // Let's assume user wants to filter by State + City mainly, but maybe State only is useful too?
-        // For now, let's notify parent only when user selects city or clear.
-        // Actually, Google Maps might accept "State, Brazil" but "City, State, Brazil" is better.
-        // Let's notify as soon as we have enough info.
         onLocationSelect(`${stateSigla}, Brasil`);
     };
 
@@ -62,7 +84,7 @@ export function GeographicFilter({ onLocationSelect }: GeographicFilterProps) {
                             Filtro Geográfico
                         </CardTitle>
                         <CardDescription>
-                            Selecione um estado no mapa e depois a cidade.
+                            Selecione um estado no menu ou no mapa, e opcionalmente escolha a cidade.
                         </CardDescription>
                     </div>
                     {(selectedState || selectedCity) && (
@@ -91,11 +113,13 @@ export function GeographicFilter({ onLocationSelect }: GeographicFilterProps) {
                                 <div className="space-y-1">
                                     <div className="flex items-center justify-between">
                                         <span className="text-muted-foreground">Estado:</span>
-                                        <span className="font-bold">{selectedState}</span>
+                                        <span className="font-bold">
+                                            {selectedState} - {BRAZILIAN_STATES.find(s => s.sigla === selectedState)?.nome || ''}
+                                        </span>
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <span className="text-muted-foreground">Cidade:</span>
-                                        <span className="font-bold">{selectedCity || "-"}</span>
+                                        <span className="font-bold">{selectedCity || "Todas as cidades (Estado inteiro)"}</span>
                                     </div>
                                 </div>
                             ) : (
@@ -103,16 +127,45 @@ export function GeographicFilter({ onLocationSelect }: GeographicFilterProps) {
                             )}
                         </div>
 
+                        {/* Menu Dropdown de Estado */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Cidade</label>
+                            <label className="text-sm font-medium">Estado (UF)</label>
+                            <select
+                                value={selectedState || ""}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (!val) {
+                                        clearFilter();
+                                    } else {
+                                        handleStateSelect(val);
+                                    }
+                                }}
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            >
+                                <option value="">Selecione um estado no menu ou no mapa...</option>
+                                {BRAZILIAN_STATES.map((st) => (
+                                    <option key={st.sigla} value={st.sigla}>
+                                        {st.sigla} - {st.nome}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Menu Seletor de Cidade */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Cidade (Opcional)</label>
                             <CitySelector
                                 state={selectedState || ""}
                                 selectedCity={selectedCity}
                                 onCitySelect={handleCitySelect}
                             />
-                            {!selectedState && (
-                                <p className="text-xs text-muted-foreground">Selecione um estado no mapa primeiro.</p>
-                            )}
+                            {!selectedState ? (
+                                <p className="text-xs text-muted-foreground">Selecione um estado no menu acima ou clique no mapa.</p>
+                            ) : !selectedCity ? (
+                                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                                    ✓ Buscando em todo o estado ({selectedState}). Escolha uma cidade para refinar.
+                                </p>
+                            ) : null}
                         </div>
                     </div>
                 </div>

@@ -1,4 +1,7 @@
 import axios from 'axios';
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
 
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
@@ -21,6 +24,7 @@ export interface PlaceResult {
         open_now: boolean;
     };
     business_status?: string;
+    photo_reference?: string;
 }
 
 export interface SearchOptions {
@@ -34,137 +38,211 @@ export interface SearchOptions {
     mustHaveWebsite?: boolean;
     location?: string;
     radius?: number;
+    matchTermInName?: boolean;
 }
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+/**
+ * Busca empresas exclusivamente via Places API (New) - places.googleapis.com/v1/places:searchText
+ * Retorna os telefones diretamente em lote, sem requisições adicionais de detalhes.
+ */
 export const searchPlaces = async (query: string, options: SearchOptions = {}): Promise<PlaceResult[]> => {
     if (!GOOGLE_MAPS_API_KEY) {
         throw new Error('Google Maps API Key is missing');
     }
 
-    let allResults: PlaceResult[] = [];
-    let nextPageToken: string | undefined = undefined;
     const limit = options.limit || 20;
-
-    // Safety: max 3 pages (60 results)
+    let allResults: PlaceResult[] = [];
+    let pageToken: string | undefined = undefined;
     let pageCount = 0;
-    const MAX_PAGES = Math.ceil(limit / 20);
+    const MAX_PAGES = Math.ceil(limit / 20) + 1;
+
+    const url = 'https://places.googleapis.com/v1/places:searchText';
+    const fieldMask = [
+        'places.id',
+        'places.displayName',
+        'places.formattedAddress',
+        'places.location',
+        'places.nationalPhoneNumber',
+        'places.internationalPhoneNumber',
+        'places.businessStatus',
+        'places.websiteUri',
+        'places.rating',
+        'places.userRatingCount',
+        'places.regularOpeningHours',
+        'places.photos',
+        'places.types'
+    ].join(',');
 
     try {
         do {
-            const url = `https://maps.googleapis.com/maps/api/place/textsearch/json`;
-            const params: any = {
-                query,
-                key: GOOGLE_MAPS_API_KEY,
+            const body: any = {
+                textQuery: query,
+                languageCode: 'pt-BR',
+                pageSize: Math.min(limit, 20)
             };
 
-            if (options.type) params.type = options.type;
-            if (options.openNow) params.openNow = true;
-            // Radius biasing
+            if (pageToken) {
+                body.pageToken = pageToken;
+                await sleep(1000);
+            }
+
+            if (options.openNow) {
+                body.openNow = true;
+            }
+
+            if (options.minRating) {
+                body.minRating = options.minRating;
+            }
+
+            // Location biasing
             if (options.location && options.radius) {
-                params.location = options.location;
-                params.radius = options.radius;
+                const parts = options.location.split(',');
+                if (parts.length === 2) {
+                    const lat = parseFloat(parts[0]);
+                    const lng = parseFloat(parts[1]);
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        body.locationBias = {
+                            circle: {
+                                center: { latitude: lat, longitude: lng },
+                                radius: options.radius
+                            }
+                        };
+                    }
+                }
             }
 
-            if (nextPageToken) {
-                params.pagetoken = nextPageToken;
-                await sleep(2000);
-            }
+            console.log(`[GoogleMaps] Chamando Places API (New): "${query}" (Página ${pageCount + 1})`);
+            const response = await axios.post(url, body, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY,
+                    'X-Goog-FieldMask': fieldMask
+                },
+                timeout: 15000
+            });
 
-            const response = await axios.get(url, { params });
-
-            if (response.data.status !== 'OK' && response.data.status !== 'ZERO_RESULTS') {
-                console.error('Google Maps API Error:', response.data);
-                if (allResults.length > 0) break;
-                throw new Error(`Google Maps API error: ${response.data.status}`);
-            }
-
-            const results = response.data.results.map((place: any) => ({
-                name: place.name,
-                address: place.formatted_address,
-                location: place.geometry.location,
-                place_id: place.place_id,
-                rating: place.rating,
-                user_ratings_total: place.user_ratings_total,
-                types: place.types,
-                opening_hours: place.opening_hours,
-                // Text Search usually doesn't return phone/website
+            const places = response.data.places || [];
+            const mapped: PlaceResult[] = places.map((p: any) => ({
+                place_id: p.id,
+                name: p.displayName?.text || '',
+                address: p.formattedAddress || '',
+                location: {
+                    lat: p.location?.latitude || 0,
+                    lng: p.location?.longitude || 0
+                },
+                rating: p.rating,
+                user_ratings_total: p.userRatingCount,
+                types: p.types,
+                formatted_phone_number: p.nationalPhoneNumber || p.internationalPhoneNumber,
+                website: p.websiteUri,
+                business_status: p.businessStatus || 'OPERATIONAL',
+                opening_hours: p.regularOpeningHours?.openNow !== undefined ? { open_now: p.regularOpeningHours.openNow } : undefined,
+                photo_reference: p.photos?.[0]?.name
             }));
 
-            allResults = [...allResults, ...results];
-            nextPageToken = response.data.next_page_token;
+            allResults = [...allResults, ...mapped];
+            pageToken = response.data.nextPageToken;
             pageCount++;
 
-        } while (nextPageToken && allResults.length < limit && pageCount < MAX_PAGES);
+        } while (pageToken && allResults.length < limit * 2 && pageCount < MAX_PAGES);
 
-        // Apply Filters
-        let filtered = allResults;
-
-        // 1. Rating (Min/Max)
-        if (options.minRating) {
-            filtered = filtered.filter(p => (p.rating || 0) >= (options.minRating || 0));
-        }
-        if (options.maxRating) {
-            filtered = filtered.filter(p => (p.rating || 0) <= (options.maxRating || 5));
-        }
-
-        // 2. Review Count
-        if (options.minReviews) {
-            filtered = filtered.filter(p => (p.user_ratings_total || 0) >= (options.minReviews || 0));
-        }
-
-        // 3. Phone/Website (Note: Text Search data limitations)
-        // If we strictly enforce this, we might filter out valid leads simply because Text Search didn't return the field.
-        // For now, we only filter if the data IS present and doesn't match, OR we assume we can't filter this without fetching details.
-        // To be safe and "Free", we effectively skip these filters for now in this function, 
-        // OR we'd need to fetch details for every result (expensive).
-        // Let's rely on the Frontend to show visual indicators or user to import "enriched" leads.
-
-        return filtered.slice(0, limit);
-
-    } catch (error) {
-        console.error('Error searching places:', error);
-        return allResults;
+    } catch (error: any) {
+        const errorData = error.response?.data?.error;
+        console.error('[GoogleMaps] Erro na Places API (New):', errorData || error.message);
+        throw new Error(errorData?.message || error.message || 'Erro ao consultar Google Places API (New)');
     }
+
+    // Filtros estritos aplicados no backend
+    let filtered = allResults;
+
+    // 1. OBRIGATÓRIO: Apenas empresas abertas / em atividade (descarta 100% de falidas e fechadas permanentemente)
+    filtered = filtered.filter(p => !p.business_status || p.business_status === 'OPERATIONAL');
+
+    // 2. OBRIGATÓRIO SE mustHavePhone (padrão true): Apenas empresas que possuem telefone válido
+    if (options.mustHavePhone !== false) {
+        filtered = filtered.filter(p => !!p.formatted_phone_number && p.formatted_phone_number.trim().length > 0);
+    }
+
+    // 3. Aberto agora (se marcado pelo usuário)
+    if (options.openNow) {
+        filtered = filtered.filter(p => p.opening_hours?.open_now === true);
+    }
+
+    // 4. Rating (Min/Max)
+    if (options.minRating) {
+        filtered = filtered.filter(p => (p.rating || 0) >= (options.minRating || 0));
+    }
+    if (options.maxRating) {
+        filtered = filtered.filter(p => (p.rating || 0) <= (options.maxRating || 5));
+    }
+
+    // 5. Review Count
+    if (options.minReviews) {
+        filtered = filtered.filter(p => (p.user_ratings_total || 0) >= (options.minReviews || 0));
+    }
+
+    // 6. Nome deve conter o termo pesquisado (se ativado pelo usuário)
+    if (options.matchTermInName && query.trim()) {
+        const baseTerm = query.split(/ em /i)[0].trim().toLowerCase();
+        if (baseTerm) {
+            filtered = filtered.filter(p => p.name.toLowerCase().includes(baseTerm));
+        }
+    }
+
+    return filtered.slice(0, limit);
 };
 
+/**
+ * Detalhes do Local exclusivamente via Places API (New) - places.googleapis.com/v1/places/{placeId}
+ */
 export const getPlaceDetails = async (placeId: string): Promise<any> => {
     if (!GOOGLE_MAPS_API_KEY) {
         throw new Error('Google Maps API Key is missing');
     }
 
     try {
-        const url = `https://maps.googleapis.com/maps/api/place/details/json`;
-        const params = {
-            place_id: placeId,
-            fields: 'name,formatted_address,geometry,formatted_phone_number,website,opening_hours,rating,user_ratings_total,photos',
-            key: GOOGLE_MAPS_API_KEY,
+        const url = `https://places.googleapis.com/v1/places/${placeId}`;
+        const fieldMask = 'id,displayName,formattedAddress,location,nationalPhoneNumber,internationalPhoneNumber,websiteUri,businessStatus,rating,userRatingCount,regularOpeningHours,photos';
+
+        const response = await axios.get(url, {
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY,
+                'X-Goog-FieldMask': fieldMask
+            },
+            timeout: 15000
+        });
+
+        const p = response.data;
+        return {
+            place_id: p.id,
+            name: p.displayName?.text || '',
+            formatted_address: p.formattedAddress || '',
+            formatted_phone_number: p.nationalPhoneNumber || p.internationalPhoneNumber || null,
+            website: p.websiteUri || null,
+            business_status: p.businessStatus || 'OPERATIONAL',
+            rating: p.rating,
+            user_ratings_total: p.userRatingCount,
+            geometry: {
+                location: {
+                    lat: p.location?.latitude || 0,
+                    lng: p.location?.longitude || 0
+                }
+            },
+            photos: (p.photos || []).map((photo: any) => ({
+                photo_reference: photo.name
+            }))
         };
-
-        const response = await axios.get(url, { params });
-
-        if (response.data.status !== 'OK') {
-            throw new Error(`Google Maps API error: ${response.data.status}`);
-        }
-
-        return response.data.result;
-    } catch (error) {
-        console.error('Error getting place details:', error);
+    } catch (error: any) {
+        console.error('Error getting place details (New API):', error.response?.data || error.message);
         return null;
     }
-}
-
-import fs from 'fs';
-import path from 'path';
-import crypto from 'crypto';
+};
 
 /**
- * Download photo from Google Places API and save locally in uploads folder
- * @param photoReference - The photo_reference from Place Details API
- * @param filenamePrefix - Prefix for saved file name (e.g. company name)
- * @param maxWidth - Maximum width of the photo (default: 400)
- * @returns Local URL path (e.g. /uploads/companies/xyz.jpg) or null if download fails
+ * Download de foto via Places API (New) e armazenamento local
  */
 export const downloadAndSavePlacePhoto = async (
     photoReference: string | undefined,
@@ -190,7 +268,12 @@ export const downloadAndSavePlacePhoto = async (
         const fileName = `${safePrefix}_${uniqueSuffix}.jpg`;
         const filePath = path.join(uploadDir, fileName);
 
-        const googlePhotoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth}&photo_reference=${photoReference}&key=${GOOGLE_MAPS_API_KEY}`;
+        let googlePhotoUrl: string;
+        if (photoReference.startsWith('places/')) {
+            googlePhotoUrl = `https://places.googleapis.com/v1/${photoReference}/media?maxHeightPx=${maxWidth}&maxWidthPx=${maxWidth}&key=${GOOGLE_MAPS_API_KEY}`;
+        } else {
+            googlePhotoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth}&photo_reference=${photoReference}&key=${GOOGLE_MAPS_API_KEY}`;
+        }
 
         const response = await axios.get(googlePhotoUrl, {
             responseType: 'arraybuffer',
@@ -228,4 +311,3 @@ export const downloadAndSavePlacePhoto = async (
 export const getPlacePhotoUrl = (photoReference: string | undefined, maxWidth: number = 400): string | null => {
     return null;
 };
-

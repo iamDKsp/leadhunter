@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Loader2, Plus, MapPin, Star, Globe, Filter, Navigation, X } from 'lucide-react';
+import { Loader2, Plus, MapPin, Star, Globe, Filter, Navigation, X, Phone, CheckCircle2 } from 'lucide-react';
 import { Lead } from '@/types/lead';
 import { GeographicFilter } from './geo/GeographicFilter';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
@@ -31,6 +31,8 @@ export function GoogleMapsSearch({ onLeadAdded }: GoogleMapsSearchProps) {
     const [maxRating, setMaxRating] = useState("");
     const [minReviews, setMinReviews] = useState("");
     const [openNow, setOpenNow] = useState(false);
+    const [mustHavePhone, setMustHavePhone] = useState(true);
+    const [matchTermInName, setMatchTermInName] = useState(false);
     const [radius, setRadius] = useState("");
     const [isLocating, setIsLocating] = useState(false);
     const [gpsLocation, setGpsLocation] = useState<{ lat: number; lng: number; label: string } | null>(null);
@@ -108,6 +110,8 @@ export function GoogleMapsSearch({ onLeadAdded }: GoogleMapsSearchProps) {
                 maxRating: maxRating ? parseFloat(maxRating) : undefined,
                 minReviews: minReviews ? parseInt(minReviews) : undefined,
                 openNow: openNow,
+                mustHavePhone: mustHavePhone,
+                matchTermInName: matchTermInName,
                 radius: radius ? parseInt(radius) : (gpsLocation ? 5000 : undefined),
                 location: locationParam,
             });
@@ -171,7 +175,7 @@ export function GoogleMapsSearch({ onLeadAdded }: GoogleMapsSearchProps) {
                 tips: 'Importado do Google Maps',
             };
 
-            const newLead = await companies.import(place.place_id, undefined, customData);
+            const newLead = await companies.import(place.place_id, undefined, customData, place);
             onLeadAdded(newLead); // Notify parent component
 
             // Update local state to show as saved
@@ -330,8 +334,25 @@ export function GoogleMapsSearch({ onLeadAdded }: GoogleMapsSearchProps) {
                                         <div className="flex items-center space-x-2">
                                             <input
                                                 type="checkbox"
+                                                id="mustHavePhone"
+                                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                                                checked={mustHavePhone}
+                                                onChange={(e) => setMustHavePhone(e.target.checked)}
+                                            />
+                                            <label htmlFor="mustHavePhone" className="text-sm font-medium cursor-pointer flex items-center gap-1.5">
+                                                <Phone className="w-3.5 h-3.5 text-emerald-500" />
+                                                Apenas com Telefone
+                                            </label>
+                                            <Badge variant="secondary" className="text-[10px] h-4 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                                Ativo
+                                            </Badge>
+                                        </div>
+
+                                        <div className="flex items-center space-x-2">
+                                            <input
+                                                type="checkbox"
                                                 id="openNow"
-                                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
                                                 checked={openNow}
                                                 onChange={(e) => setOpenNow(e.target.checked)}
                                             />
@@ -340,10 +361,20 @@ export function GoogleMapsSearch({ onLeadAdded }: GoogleMapsSearchProps) {
                                             </label>
                                         </div>
 
-                                        <div className="flex items-center space-x-2 opacity-50 cursor-not-allowed" title="Em breve">
-                                            <div className="h-4 w-4 rounded border border-gray-300 flex items-center justify-center"></div>
-                                            <label className="text-sm font-medium text-gray-400">Com Telefone</label>
-                                            <Badge variant="outline" className="text-[10px] h-4 text-gray-500">PRO</Badge>
+                                        <div className="flex items-center space-x-2">
+                                            <input
+                                                type="checkbox"
+                                                id="matchTermInName"
+                                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                                                checked={matchTermInName}
+                                                onChange={(e) => setMatchTermInName(e.target.checked)}
+                                            />
+                                            <label htmlFor="matchTermInName" className="text-sm font-medium cursor-pointer" title="Só traz empresas que tenham o termo pesquisado no nome">
+                                                Termo no Nome
+                                            </label>
+                                            <Badge variant="outline" className="text-[10px] h-4 text-blue-500 border-blue-500/30">
+                                                Exato
+                                            </Badge>
                                         </div>
 
                                         <div className="flex items-center space-x-2 opacity-50 cursor-not-allowed" title="Em breve">
@@ -374,19 +405,19 @@ export function GoogleMapsSearch({ onLeadAdded }: GoogleMapsSearchProps) {
                                 <div>
                                     <CardTitle className="text-lg font-bold">{place.name}</CardTitle>
                                     <CardDescription className="flex flex-col mt-1 gap-1">
-                                        <span className="flex items-center"><MapPin className="h-3 w-3 mr-1" /> {place.address}</span>
+                                        <span className="flex items-center"><MapPin className="h-3 w-3 mr-1 shrink-0" /> {place.address}</span>
                                         <a
                                             href={`https://www.google.com/maps/place/?q=place_id:${place.place_id}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="text-primary hover:underline text-xs flex items-center"
                                         >
-                                            <Globe className="h-3 w-3 mr-1" /> Ver no Google Maps
+                                            <Globe className="h-3 w-3 mr-1 shrink-0" /> Ver no Google Maps
                                         </a>
                                     </CardDescription>
                                 </div>
                                 {place.rating && (
-                                    <Badge variant="secondary" className="flex items-center">
+                                    <Badge variant="secondary" className="flex items-center shrink-0">
                                         <Star className="h-3 w-3 mr-1 text-yellow-500" />
                                         {place.rating}
                                     </Badge>
@@ -394,13 +425,36 @@ export function GoogleMapsSearch({ onLeadAdded }: GoogleMapsSearchProps) {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-2 mb-4 text-sm text-gray-600">
-                                {place.opening_hours?.open_now !== undefined && (
-                                    <div className="flex items-center">
-                                        <span className={`w-2 h-2 rounded-full mr-2 ${place.opening_hours.open_now ? 'bg-green-500' : 'bg-red-500'}`} />
-                                        {place.opening_hours.open_now ? 'Aberto agora' : 'Fechado'}
+                            <div className="space-y-2 mb-4 text-sm text-gray-600 dark:text-gray-300">
+                                {/* Telefone com destaque visual */}
+                                {place.formatted_phone_number ? (
+                                    <div className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 dark:bg-emerald-500/20 px-2.5 py-1 rounded-md text-xs w-fit">
+                                        <Phone className="w-3.5 h-3.5 shrink-0" />
+                                        <span>{place.formatted_phone_number}</span>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-md w-fit">
+                                        <Phone className="w-3.5 h-3.5 shrink-0" />
+                                        <span>Sem telefone informado</span>
                                     </div>
                                 )}
+
+                                {/* Status de Funcionamento */}
+                                <div className="flex flex-wrap items-center gap-3 text-xs pt-1">
+                                    {place.business_status === 'OPERATIONAL' && (
+                                        <span className="flex items-center text-emerald-600 dark:text-emerald-400 font-medium">
+                                            <span className="w-2 h-2 rounded-full mr-1.5 bg-emerald-500" />
+                                            Empresa Ativa
+                                        </span>
+                                    )}
+
+                                    {place.opening_hours?.open_now !== undefined && (
+                                        <div className="flex items-center">
+                                            <span className={`w-2 h-2 rounded-full mr-1.5 ${place.opening_hours.open_now ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                                            {place.opening_hours.open_now ? 'Aberto agora' : 'Fechado no momento'}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             <Button
