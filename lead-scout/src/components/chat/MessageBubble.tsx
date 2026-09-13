@@ -304,10 +304,10 @@ export const MessageBubble = ({ message }: MessageBubbleProps) => {
         >
             <div
                 className={cn(
-                    "max-w-[70%] px-4 py-2.5 rounded-2xl relative",
+                    "max-w-[86%] sm:max-w-[70%] px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl relative select-text shadow-sm",
                     message.isSent
-                        ? "bg-primary text-primary-foreground rounded-br-md"
-                        : "bg-secondary text-secondary-foreground rounded-bl-md",
+                        ? "bg-primary text-primary-foreground rounded-br-sm"
+                        : "bg-secondary text-secondary-foreground rounded-bl-sm",
                     isMedia && "p-2"
                 )}
             >

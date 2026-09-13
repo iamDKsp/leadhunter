@@ -114,7 +114,8 @@ const KanbanCard = ({ lead, isDragging, onView, onAssign, stages = [], onLeadSta
     return (
         <>
             <div
-                className={`bg-card/80 backdrop-blur-sm border rounded-lg p-3 cursor-grab active:cursor-grabbing transition-all ${isDragging ? 'shadow-lg shadow-primary/20 border-primary/50' : 'hover:border-primary/30'
+                onClick={onView}
+                className={`bg-card/80 backdrop-blur-sm border rounded-xl p-3 sm:p-3 cursor-pointer select-none active:scale-[0.985] transition-all ${isDragging ? 'shadow-lg shadow-primary/20 border-primary/50' : 'hover:border-primary/30'
                     } ${lead.status === 'won'
                         ? 'border-green-500/50'
                         : lead.status === 'lost'
@@ -191,17 +192,28 @@ const KanbanCard = ({ lead, isDragging, onView, onAssign, stages = [], onLeadSta
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex items-start gap-1 flex-shrink-0">
+                    <div className="flex items-center gap-1 sm:gap-1 flex-shrink-0">
+                        {lead.phone && (
+                            <a
+                                href={`tel:${lead.phone}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-8 h-8 sm:hidden rounded-lg flex items-center justify-center text-muted-foreground hover:text-blue-400 hover:bg-blue-400/10 active:scale-90 transition-all"
+                                title="Ligar para o lead"
+                            >
+                                <Phone className="w-4 h-4" />
+                            </a>
+                        )}
+
                         {onAssign && (
                             <button
                                 onClick={(e) => { e.stopPropagation(); onAssign(); }}
-                                className={`w-6 h-6 rounded flex items-center justify-center transition-all ${hasResponsible
+                                className={`w-8 h-8 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center active:scale-90 transition-all ${hasResponsible
                                     ? 'text-primary bg-primary/10 hover:bg-primary/20'
                                     : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
                                     }`}
                                 title={hasResponsible ? `Atribuído a ${responsible?.name || responsible?.email}` : 'Atribuir vendedor'}
                             >
-                                {hasResponsible ? <User className="w-3 h-3" /> : <UserPlus className="w-3 h-3" />}
+                                {hasResponsible ? <User className="w-4 h-4 sm:w-3 sm:h-3" /> : <UserPlus className="w-4 h-4 sm:w-3 sm:h-3" />}
                             </button>
                         )}
 
@@ -209,32 +221,32 @@ const KanbanCard = ({ lead, isDragging, onView, onAssign, stages = [], onLeadSta
                         <button
                             onClick={handleQuickSend}
                             disabled={!lead.phone || isQuickSending}
-                            className={`w-6 h-6 rounded flex items-center justify-center transition-all ${lead.phone
+                            className={`w-8 h-8 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center active:scale-90 transition-all ${lead.phone
                                 ? 'text-muted-foreground hover:text-yellow-400 hover:bg-yellow-400/10'
                                 : 'text-muted-foreground/30 cursor-not-allowed'}`}
                             title={lead.phone ? 'Enviar template selecionado' : 'Sem telefone'}
                         >
-                            <Zap className={`w-3 h-3 ${isQuickSending ? 'animate-pulse text-yellow-400' : ''}`} />
+                            <Zap className={`w-4 h-4 sm:w-3 sm:h-3 ${isQuickSending ? 'animate-pulse text-yellow-400' : ''}`} />
                         </button>
 
                         {/* Chat */}
                         <button
                             onClick={handleChatClick}
-                            className={`w-6 h-6 rounded flex items-center justify-center transition-all ${lead.phone
+                            className={`w-8 h-8 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center active:scale-90 transition-all ${lead.phone
                                 ? 'text-muted-foreground hover:text-green-500 hover:bg-green-500/10'
                                 : 'text-muted-foreground/30 cursor-not-allowed'}`}
                             title={lead.phone ? "Abrir conversa" : "Sem telefone"}
                             disabled={!lead.phone}
                         >
-                            <MessageCircle className="w-3 h-3" />
+                            <MessageCircle className="w-4 h-4 sm:w-3 sm:h-3" />
                         </button>
 
                         {/* View */}
                         <button
                             onClick={(e) => { e.stopPropagation(); onView(); }}
-                            className="w-6 h-6 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
+                            className="w-8 h-8 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary active:scale-90 transition-all"
                         >
-                            <Eye className="w-3 h-3" />
+                            <Eye className="w-4 h-4 sm:w-3 sm:h-3" />
                         </button>
                     </div>
                 </div>

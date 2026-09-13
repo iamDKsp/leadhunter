@@ -232,12 +232,12 @@ export const ChatWindow = ({
             </Dialog>
 
             {/* Chat Header */}
-            <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-border flex items-center justify-between bg-card/30">
+            <div className="px-3 sm:px-6 py-2.5 sm:py-4 border-b border-border flex items-center justify-between bg-card/60 backdrop-blur-md sticky top-0 z-10 select-none">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                     {onBack && (
                         <button
                             onClick={onBack}
-                            className="md:hidden p-1.5 -ml-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
+                            className="md:hidden w-10 h-10 -ml-1 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary active-press transition-all"
                             title="Voltar para lista"
                             aria-label="Voltar para lista"
                         >
@@ -312,17 +312,21 @@ export const ChatWindow = ({
             <QuickTemplates onSelectTemplate={handleTemplateSelect} />
 
             {/* Input Area */}
-            <div className="px-4 py-4 border-t border-border bg-card/30">
-                <div className="flex items-center gap-3">
+            <div className="px-2.5 sm:px-4 py-2.5 sm:py-4 border-t border-border bg-card/65 backdrop-blur-md">
+                <div className="flex items-center gap-1.5 sm:gap-3">
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="text-muted-foreground hover:text-primary"
+                        className="text-muted-foreground hover:text-primary w-10 h-10 min-w-[40px] rounded-xl active-press"
                         onClick={() => fileInputRef.current?.click()}
                     >
                         <Paperclip className="h-5 w-5" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-primary w-10 h-10 min-w-[40px] rounded-xl active-press hidden sm:flex"
+                    >
                         <Smile className="h-5 w-5" />
                     </Button>
 
@@ -334,21 +338,21 @@ export const ChatWindow = ({
                             adjustTextareaHeight();
                         }}
                         onKeyDown={handleKeyDown}
-                        placeholder="Digite sua mensagem (Shift+Enter para nova linha)..."
+                        placeholder="Mensagem..."
                         rows={1}
-                        className="flex-1 bg-input border border-border focus:border-primary focus:outline-none rounded-md px-3 py-2 text-sm resize-none overflow-y-auto text-foreground placeholder:text-muted-foreground"
-                        style={{ minHeight: '40px', maxHeight: '150px' }}
+                        className="flex-1 bg-input border border-border focus:border-primary focus:outline-none rounded-2xl px-3.5 py-2 text-sm resize-none overflow-y-auto text-foreground placeholder:text-muted-foreground transition-colors"
+                        style={{ minHeight: '40px', maxHeight: '120px' }}
                     />
 
                     <Button
                         onClick={handleSend}
                         disabled={!inputValue.trim()}
                         className={cn(
-                            "bg-primary text-primary-foreground hover:bg-primary/90",
+                            "bg-primary text-primary-foreground hover:bg-primary/90 w-10 h-10 min-w-[40px] rounded-xl p-0 flex items-center justify-center active-press flex-shrink-0",
                             !inputValue.trim() && "opacity-50 cursor-not-allowed"
                         )}
                     >
-                        <Send className="h-5 w-5" />
+                        <Send className="h-4 w-4 sm:h-5 sm:w-5" />
                     </Button>
                 </div>
             </div>

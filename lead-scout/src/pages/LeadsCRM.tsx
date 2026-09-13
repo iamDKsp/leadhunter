@@ -17,6 +17,8 @@ import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { stages as stagesApi } from '@/services/api';
 import { useEffect } from 'react';
+import { PullToRefresh } from '@/components/common/PullToRefresh';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const defaultStages: Stage[] = [
     { id: 'prospeccao', name: 'Prospecção', color: '#3b82f6', order: 0 },
@@ -37,6 +39,7 @@ interface LeadsCRMProps {
 const LeadsCRM = ({ user }: LeadsCRMProps) => {
     const {
         leads,
+        isLoading,
         addLead,
         updateLead,
         deleteLead,
@@ -367,41 +370,65 @@ const LeadsCRM = ({ user }: LeadsCRMProps) => {
                                 onSelectStage={setSelectedMobileStageId}
                                 onOpenNewLead={handleOpenNewLead}
                             />
-                            <div className="flex-1 overflow-y-auto space-y-3 pb-24 custom-scrollbar px-0.5">
-                                {(() => {
-                                    const currentStageLeads = filteredLeads.filter(
-                                        l => (l.stageId || 'prospeccao') === selectedMobileStageId
-                                    );
-                                    if (currentStageLeads.length === 0) {
-                                        return (
-                                            <div className="p-8 text-center bg-card/40 rounded-2xl border border-dashed border-border/40 mt-4 animate-fade-in">
-                                                <p className="text-sm text-muted-foreground mb-3 font-medium">
-                                                    Nenhum lead nesta etapa
-                                                </p>
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={handleOpenNewLead}
-                                                    className="rounded-xl border-primary/30 text-primary hover:bg-primary/10"
-                                                >
-                                                    <Plus className="w-4 h-4 mr-1.5" /> Adicionar Lead
-                                                </Button>
-                                            </div>
+                            <PullToRefresh onRefresh={refresh} className="flex-1 overflow-hidden">
+                                <div className="flex-1 overflow-y-auto space-y-3 pb-24 custom-scrollbar px-0.5 h-full">
+                                    {(() => {
+                                        if (isLoading) {
+                                            return (
+                                                <div className="space-y-3 animate-fade-in pt-1">
+                                                    {[1, 2, 3, 4].map(i => (
+                                                        <div key={i} className="p-3.5 bg-card/60 border border-border/40 rounded-xl space-y-3">
+                                                            <div className="flex items-center gap-3">
+                                                                <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
+                                                                <div className="space-y-1.5 flex-1 min-w-0">
+                                                                    <Skeleton className="h-4 w-3/4 rounded" />
+                                                                    <Skeleton className="h-3 w-1/2 rounded" />
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 pt-1">
+                                                                <Skeleton className="h-3 w-24 rounded" />
+                                                                <Skeleton className="h-3 w-20 rounded" />
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            );
+                                        }
+
+                                        const currentStageLeads = filteredLeads.filter(
+                                            l => (l.stageId || 'prospeccao') === selectedMobileStageId
                                         );
-                                    }
-                                    return currentStageLeads.map(lead => (
-                                        <KanbanCard
-                                            key={lead.id}
-                                            lead={lead}
-                                            isDragging={false}
-                                            onView={() => handleViewLead(lead)}
-                                            onAssign={() => handleAssignLead(lead)}
-                                            stages={stages}
-                                            onLeadStageAdvance={(leadId, newStageId) => updateLead(leadId, { stageId: newStageId })}
-                                        />
-                                    ));
-                                })()}
-                            </div>
+                                        if (currentStageLeads.length === 0) {
+                                            return (
+                                                <div className="p-8 text-center bg-card/40 rounded-2xl border border-dashed border-border/40 mt-4 animate-fade-in">
+                                                    <p className="text-sm text-muted-foreground mb-3 font-medium">
+                                                        Nenhum lead nesta etapa
+                                                    </p>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={handleOpenNewLead}
+                                                        className="rounded-xl border-primary/30 text-primary hover:bg-primary/10 active-press"
+                                                    >
+                                                        <Plus className="w-4 h-4 mr-1.5" /> Adicionar Lead
+                                                    </Button>
+                                                </div>
+                                            );
+                                        }
+                                        return currentStageLeads.map(lead => (
+                                            <KanbanCard
+                                                key={lead.id}
+                                                lead={lead}
+                                                isDragging={false}
+                                                onView={() => handleViewLead(lead)}
+                                                onAssign={() => handleAssignLead(lead)}
+                                                stages={stages}
+                                                onLeadStageAdvance={(leadId, newStageId) => updateLead(leadId, { stageId: newStageId })}
+                                            />
+                                        ));
+                                    })()}
+                                </div>
+                            </PullToRefresh>
                         </div>
                     </>
                 ) : (

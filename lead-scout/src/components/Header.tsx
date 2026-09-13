@@ -24,30 +24,30 @@ export function Header({ title, subtitle, onAddLead, user, onLogout, onToggleMob
   const navigate = useNavigate();
 
   return (
-    <header className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 border-b border-border/30 bg-card/50 backdrop-blur-sm sticky top-0 z-40 transition-all duration-300">
+    <header className="flex items-center justify-between px-3 sm:px-6 h-14 sm:h-16 border-b border-border/30 bg-card/75 backdrop-blur-md sticky top-0 z-30 transition-all duration-300 select-none">
       <div className="flex items-center gap-2.5 min-w-0">
         {onToggleMobileMenu && (
           <button
             onClick={onToggleMobileMenu}
-            className="md:hidden p-2 -ml-1 rounded-lg border border-border/50 text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
+            className="md:hidden w-10 h-10 -ml-1 rounded-xl border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary active-press transition-all"
             aria-label="Abrir menu"
           >
             <Menu className="w-5 h-5" />
           </button>
         )}
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-2xl font-bold text-foreground tracking-tight truncate">{title}</h1>
+          <h1 className="text-base sm:text-2xl font-bold text-foreground tracking-tight truncate">{title}</h1>
           {subtitle && <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 truncate hidden sm:block">{subtitle}</p>}
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="relative w-10 h-10 rounded-lg border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-all outline-none">
+            <button className="relative w-10 h-10 rounded-xl border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary active-press transition-all outline-none">
               <Bell className="w-5 h-5" />
               {pendingNotifications.length > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-card">
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-card animate-pulse">
                   {pendingNotifications.length > 9 ? '9+' : pendingNotifications.length}
                 </span>
               )}
@@ -105,7 +105,7 @@ export function Header({ title, subtitle, onAddLead, user, onLogout, onToggleMob
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className={`${user?.avatar ? 'p-0.5' : 'p-0'} w-10 h-10 rounded-full border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-all outline-none overflow-hidden`}>
+            <button className={`${user?.avatar ? 'p-0.5' : 'p-0'} w-10 h-10 rounded-full border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary active-press transition-all outline-none overflow-hidden`}>
               {user?.avatar ? (
                 <img
                   src={user.avatar.startsWith('http') || user.avatar.startsWith('/')

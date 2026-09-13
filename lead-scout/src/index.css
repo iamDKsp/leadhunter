@@ -87,10 +87,13 @@
 @layer base {
   * {
     @apply border-border;
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
     @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
   }
 }
 
@@ -136,9 +139,24 @@
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--primary) / 0.5);
   }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .active-press {
+    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .active-press:active {
+    transform: scale(0.96);
+  }
 }
 
-/* Global Scrollbar */
+/* Global Scrollbar on Desktop */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -156,4 +174,16 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--primary));
+}
+
+/* Hide scrollbars completely on touch / mobile devices */
+@media (max-width: 768px) {
+  ::-webkit-scrollbar {
+    display: none !important;
+    width: 0px !important;
+    height: 0px !important;
+  }
+  * {
+    scrollbar-width: none !important;
+  }
 }
