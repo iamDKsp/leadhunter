@@ -8,12 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Lead, Stage, COMPANY_TYPES, COMPANY_SIZES, ACTIVITY_BRANCHES, CompanyType, CompanySize, ActivityBranch } from '@/types/lead';
-import { X, Plus, Building2, ThumbsUp, ThumbsDown, CheckCircle2, Save, MapPin, Trash2, Pencil, Calendar, Clock, CalendarCheck, MessageSquarePlus } from 'lucide-react';
+import { X, Plus, Building2, ThumbsUp, ThumbsDown, CheckCircle2, Save, MapPin, Trash2, Pencil, Calendar, Clock, CalendarCheck, MessageSquarePlus, Phone, Navigation } from 'lucide-react';
 import api from '@/services/api';
 import CelebrationModal from './CelebrationModal';
 import MeetingModal from './MeetingModal';
 import { FirstContactTemplateModal } from './FirstContactTemplateModal';
 import { getMediaUrl, getCompanyInitials, getCompanyAvatarColor } from '@/utils/media';
+import { triggerHaptic } from '@/utils/haptics';
 
 // Preset tag colors
 const TAG_COLORS = [
@@ -367,6 +368,7 @@ const LeadFormModal = ({ open, onClose, onSave, lead, stages }: LeadFormModalPro
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.name.trim()) return;
+        triggerHaptic('success');
         onSave({
             ...formData,
             id: lead?.id,
@@ -380,6 +382,13 @@ const LeadFormModal = ({ open, onClose, onSave, lead, stages }: LeadFormModalPro
         const address = formData.address || formData.name;
         if (address) {
             window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank');
+        }
+    };
+
+    const openWaze = () => {
+        const address = formData.address || formData.name;
+        if (address) {
+            window.open(`https://waze.com/ul?q=${encodeURIComponent(address)}`, '_blank');
         }
     };
 
@@ -409,7 +418,11 @@ const LeadFormModal = ({ open, onClose, onSave, lead, stages }: LeadFormModalPro
     return (
         <>
             <Dialog open={open} onOpenChange={onClose}>
-                <DialogContent className="sm:max-w-6xl bg-card/95 backdrop-blur-xl border-border/30 max-h-[90vh] overflow-y-auto w-full">
+                <DialogContent className="w-full max-w-full sm:max-w-6xl bg-card/95 backdrop-blur-2xl border-border/30 h-[96dvh] sm:h-auto sm:max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-2xl p-4 sm:p-6 flex flex-col inset-x-0 bottom-0 top-auto sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2">
+                    {/* Mobile drag handle */}
+                    <div className="flex justify-center -mt-2 mb-2 sm:hidden">
+                        <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
+                    </div>
                     <DialogHeader>
                         {lead && (
                             <div className="flex items-center gap-4 mb-2">
@@ -441,16 +454,36 @@ const LeadFormModal = ({ open, onClose, onSave, lead, stages }: LeadFormModalPro
                                 })()}
                                 <div className="flex-1 min-w-0">
                                     <DialogTitle className="text-xl font-semibold truncate">{lead.name}</DialogTitle>
-                                    <div className="flex items-center gap-2">
-                                        <p className="text-sm text-muted-foreground truncate">{lead.address || 'Sem endereço'}</p>
+                                    <div className="flex items-center gap-2 flex-wrap mt-1">
+                                        <p className="text-xs sm:text-sm text-muted-foreground truncate max-w-[200px]">{lead.address || 'Sem endereço'}</p>
                                         {(lead.address || lead.name) && (
-                                            <button
-                                                onClick={openGoogleMaps}
-                                                className="flex-shrink-0 p-1 rounded hover:bg-primary/10 text-primary transition-colors"
-                                                title="Abrir no Google Maps"
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={openGoogleMaps}
+                                                    className="px-2 py-0.5 rounded bg-primary/10 hover:bg-primary/20 text-primary transition-colors text-[11px] font-medium flex items-center gap-1"
+                                                    title="Abrir no Google Maps"
+                                                >
+                                                    <MapPin className="w-3 h-3" /> Maps
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={openWaze}
+                                                    className="px-2 py-0.5 rounded bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 transition-colors text-[11px] font-medium flex items-center gap-1"
+                                                    title="Abrir no Waze"
+                                                >
+                                                    <Navigation className="w-3 h-3" /> Waze
+                                                </button>
+                                            </div>
+                                        )}
+                                        {lead.phone && (
+                                            <a
+                                                href={`tel:${lead.phone}`}
+                                                className="px-2 py-0.5 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-colors text-[11px] font-medium flex items-center gap-1"
+                                                title="Ligar agora"
                                             >
-                                                <MapPin className="w-4 h-4" />
-                                            </button>
+                                                <Phone className="w-3 h-3" /> Ligar
+                                            </a>
                                         )}
                                     </div>
                                 </div>
@@ -556,28 +589,28 @@ const LeadFormModal = ({ open, onClose, onSave, lead, stages }: LeadFormModalPro
                                 {/* Valor */}
                                 <div className="space-y-1.5">
                                     <Label htmlFor="value" className="text-xs">Valor Estimado (R$)</Label>
-                                    <Input id="value" type="number" value={formData.value}
+                                    <Input id="value" type="number" inputMode="decimal" step="any" value={formData.value}
                                         onChange={(e) => setFormData(prev => ({ ...prev, value: parseFloat(e.target.value) || 0 }))}
                                         placeholder="0,00" className="bg-background/50 border-border/30 h-9" />
                                 </div>
 
                                 {/* Contato */}
-                                <div className="grid grid-cols-3 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                     <div className="space-y-1.5">
                                         <Label htmlFor="phone" className="text-xs">Telefone</Label>
-                                        <Input id="phone" value={formData.phone}
+                                        <Input id="phone" type="tel" inputMode="tel" value={formData.phone}
                                             onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                                             placeholder="(00) 00000-0000" className="bg-background/50 border-border/30 h-9" />
                                     </div>
                                     <div className="space-y-1.5">
                                         <Label htmlFor="email" className="text-xs">Email</Label>
-                                        <Input id="email" type="email" value={formData.email}
+                                        <Input id="email" type="email" inputMode="email" value={formData.email}
                                             onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                                             placeholder="email@empresa.com" className="bg-background/50 border-border/30 h-9" />
                                     </div>
                                     <div className="space-y-1.5">
                                         <Label htmlFor="website" className="text-xs">Website</Label>
-                                        <Input id="website" value={formData.website}
+                                        <Input id="website" type="url" inputMode="url" value={formData.website}
                                             onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
                                             placeholder="https://www.exemplo.com" className="bg-background/50 border-border/30 h-9" />
                                     </div>

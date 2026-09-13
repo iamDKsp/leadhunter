@@ -7,6 +7,7 @@ import {
   MoreHorizontal
 } from 'lucide-react';
 import { useWhatsApp } from '@/context/WhatsAppContext';
+import { triggerHaptic } from '@/utils/haptics';
 
 interface MobileBottomNavProps {
   activeView: string;
@@ -61,7 +62,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           return (
             <button
               key={item.id}
-              onClick={() => onViewChange(item.id)}
+              onClick={() => {
+                triggerHaptic('light');
+                onViewChange(item.id);
+              }}
               className={`relative flex flex-col items-center justify-center flex-1 py-1.5 transition-all duration-200 ${
                 isActive
                   ? 'text-primary font-semibold'
@@ -96,7 +100,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
         {/* More Button */}
         <button
-          onClick={onOpenMore}
+          onClick={() => {
+            triggerHaptic('light');
+            onOpenMore();
+          }}
           className="flex flex-col items-center justify-center flex-1 py-1.5 text-muted-foreground hover:text-foreground transition-all duration-200"
         >
           <div className="p-1 rounded-xl text-muted-foreground">

@@ -113,6 +113,7 @@ const Index = () => {
   const [activeChat, setActiveChat] = useState<{ number: string, name: string } | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
+  const [isChatActive, setIsChatActive] = useState(false);
 
   const filteredLeads = useMemo(() => {
     return leads.filter((lead) => {
@@ -255,7 +256,7 @@ const Index = () => {
     }
 
     if (activeView === 'conversas') {
-      return <Conversas user={user} />;
+      return <Conversas user={user} onChatActive={setIsChatActive} />;
     }
 
     if (activeView === 'leads') {
@@ -339,7 +340,9 @@ const Index = () => {
 
         <div className={cn(
           "flex-1 overflow-auto custom-scrollbar bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-background to-background",
-          activeView === 'conversas' ? "p-0 pb-16 md:pb-0" : "p-3 sm:p-4 md:p-6 pb-24 md:pb-6"
+          activeView === 'conversas'
+            ? (isChatActive ? "p-0 pb-0" : "p-0 pb-16 md:pb-0")
+            : "p-3 sm:p-4 md:p-6 pb-24 md:pb-6"
         )}>
           {activeView === 'search' ? (
             <GoogleMapsSearch onLeadAdded={(newLead) => {
@@ -361,6 +364,7 @@ const Index = () => {
         activeView={activeView}
         onViewChange={handleViewChange}
         onOpenMore={() => setIsMoreSheetOpen(true)}
+        isHidden={activeView === 'conversas' && isChatActive}
       />
 
       {/* Mobile More Bottom Sheet */}

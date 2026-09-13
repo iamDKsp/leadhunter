@@ -5,10 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Loader2, Plus, MapPin, Star, Globe, Filter } from 'lucide-react';
+import { Loader2, Plus, MapPin, Star, Globe, Filter, Navigation, X } from 'lucide-react';
 import { Lead } from '@/types/lead';
 import { GeographicFilter } from './geo/GeographicFilter';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
+import { triggerHaptic } from '@/utils/haptics';
+import { cn } from '@/lib/utils';
 
 interface GoogleMapsSearchProps {
     onLeadAdded: (lead: Lead) => void;
@@ -30,6 +32,65 @@ export function GoogleMapsSearch({ onLeadAdded }: GoogleMapsSearchProps) {
     const [minReviews, setMinReviews] = useState("");
     const [openNow, setOpenNow] = useState(false);
     const [radius, setRadius] = useState("");
+    const [isLocating, setIsLocating] = useState(false);
+    const [gpsLocation, setGpsLocation] = useState<{ lat: number; lng: number; label: string } | null>(null);
+
+    const handleNearbySearch = () => {
+        if (!navigator.geolocation) {
+            toast.error('Geolocalização não é suportada pelo seu navegador.');
+            return;
+        }
+
+        setIsLocating(true);
+        triggerHaptic('light');
+
+        navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+                const { latitude, longitude } = pos.coords;
+                try {
+                    const resp = await fetch(
+                        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=14&addressdetails=1`,
+                        { headers: { 'Accept-Language': 'pt-BR' } }
+                    );
+                    const data = await resp.json();
+                    const address = data.address || {};
+                    const city = address.city || address.town || address.village || address.municipality || 'Minha Região';
+                    const suburb = address.suburb || address.neighbourhood || '';
+                    const state = address.state || '';
+                    const label = suburb ? `${suburb}, ${city}` : (state ? `${city}, ${state}` : city);
+
+                    setGpsLocation({ lat: latitude, lng: longitude, label });
+                    setSelectedLocation(label);
+                    triggerHaptic('success');
+                    toast.success(`📍 Localização detectada: ${label}`);
+                } catch {
+                    const label = `${latitude.toFixed(3)}, ${longitude.toFixed(3)}`;
+                    setGpsLocation({ lat: latitude, lng: longitude, label });
+                    setSelectedLocation(label);
+                    triggerHaptic('success');
+                    toast.success('📍 Localização GPS obtida!');
+                } finally {
+                    setIsLocating(false);
+                }
+            },
+            (err) => {
+                setIsLocating(false);
+                triggerHaptic('error');
+                if (err.code === 1) {
+                    toast.error('Permissão negada. Ative o GPS no navegador do celular.');
+                } else {
+                    toast.error('Não foi possível obter a sua localização.');
+                }
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    };
+
+    const clearGps = () => {
+        setGpsLocation(null);
+        setSelectedLocation(null);
+        triggerHaptic('light');
+    };
 
     const handleSearch = async (e?: React.FormEvent) => {
         e?.preventDefault();
@@ -39,6 +100,7 @@ export function GoogleMapsSearch({ onLeadAdded }: GoogleMapsSearchProps) {
         setResults([]);
         try {
             const searchQuery = selectedLocation ? `${query} em ${selectedLocation}` : query;
+            const locationParam = gpsLocation ? `${gpsLocation.lat},${gpsLocation.lng}` : (selectedLocation || undefined);
 
             const data = await companies.search(searchQuery, {
                 limit: parseInt(limit),
@@ -46,8 +108,8 @@ export function GoogleMapsSearch({ onLeadAdded }: GoogleMapsSearchProps) {
                 maxRating: maxRating ? parseFloat(maxRating) : undefined,
                 minReviews: minReviews ? parseInt(minReviews) : undefined,
                 openNow: openNow,
-                radius: radius ? parseInt(radius) : undefined,
-                location: selectedLocation || undefined,
+                radius: radius ? parseInt(radius) : (gpsLocation ? 5000 : undefined),
+                location: locationParam,
             });
 
             console.log("Search results:", data);
@@ -142,7 +204,25 @@ export function GoogleMapsSearch({ onLeadAdded }: GoogleMapsSearchProps) {
                                 onChange={(e) => setQuery(e.target.value)}
                                 className="flex-1"
                             />
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className={cn(
+                                        "flex-1 sm:flex-initial transition-colors",
+                                        gpsLocation && "border-primary bg-primary/10 text-primary font-medium"
+                                    )}
+                                    onClick={handleNearbySearch}
+                                    disabled={isLocating}
+                                    title="Buscar empresas perto de onde você está agora"
+                                >
+                                    {isLocating ? (
+                                        <Loader2 className="w-4 h-4 mr-1.5 animate-spin text-primary" />
+                                    ) : (
+                                        <Navigation className={cn("w-4 h-4 mr-1.5", gpsLocation ? "text-primary fill-current" : "text-blue-500")} />
+                                    )}
+                                    Perto de Mim
+                                </Button>
                                 <Button type="button" variant="outline" className="flex-1 sm:flex-initial" onClick={() => setIsFilterOpen(!isFilterOpen)}>
                                     <MapPin className="w-4 h-4 mr-1.5" />
                                     Mapa
@@ -157,6 +237,21 @@ export function GoogleMapsSearch({ onLeadAdded }: GoogleMapsSearchProps) {
                                 </Button>
                             </div>
                         </div>
+
+                        {gpsLocation && (
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-full text-xs text-primary font-medium w-fit animate-fade-in">
+                                <Navigation className="w-3.5 h-3.5 fill-current animate-pulse" />
+                                <span>GPS Ativo: {gpsLocation.label} (raio 5km)</span>
+                                <button
+                                    type="button"
+                                    onClick={clearGps}
+                                    className="hover:text-foreground ml-1 p-0.5"
+                                    title="Remover localização GPS"
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                        )}
 
                         {/* Geographic Filter */}
                         <Collapsible open={isFilterOpen} onOpenChange={setIsFilterOpen}>

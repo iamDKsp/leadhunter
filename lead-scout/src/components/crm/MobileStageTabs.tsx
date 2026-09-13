@@ -3,6 +3,7 @@ import { Stage, Lead } from '@/types/lead';
 import { Copy, Plus, ChevronRight } from 'lucide-react';
 import { formatStageLeadsForWhatsApp, copyToClipboard } from '@/utils/leadExport';
 import { toast } from 'sonner';
+import { triggerHaptic } from '@/utils/haptics';
 
 interface MobileStageTabsProps {
   stages: Stage[];
@@ -89,7 +90,10 @@ export const MobileStageTabs: React.FC<MobileStageTabsProps> = ({
             <button
               key={stage.id}
               ref={isActive ? activeTabRef : null}
-              onClick={() => onSelectStage(stage.id)}
+              onClick={() => {
+                triggerHaptic('light');
+                onSelectStage(stage.id);
+              }}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex-shrink-0 border ${
                 isActive
                   ? 'bg-primary text-primary-foreground border-primary shadow-md shadow-primary/20 scale-102'

@@ -31,9 +31,18 @@ const normalizeChatId = (chatId: string): string => {
     return clean;
 };
 
-const Conversas = ({ user }: { user?: User }) => {
+interface ConversasProps {
+    user?: User;
+    onChatActive?: (isActive: boolean) => void;
+}
+
+const Conversas = ({ user, onChatActive }: ConversasProps) => {
     const [searchParams, setSearchParams] = useSearchParams();
     const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+
+    useEffect(() => {
+        onChatActive?.(!!activeConversationId);
+    }, [activeConversationId, onChatActive]);
     const activeConversationIdRef = useRef<string | null>(null);
     const messageListenerRef = useRef<((msg: any) => void) | null>(null);
     const statusListenerRef = useRef<((data: any) => void) | null>(null);
