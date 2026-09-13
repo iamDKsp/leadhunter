@@ -14,6 +14,9 @@ services:
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
     volumes:
       - backend_data:/app
+      - backend_uploads:/usr/src/app/public/uploads
+      - backend_media:/usr/src/app/public/media
+      - backend_baileys:/usr/src/app/baileys_auth_info
     restart: unless-stopped
 
   frontend:
@@ -29,3 +32,6 @@ services:
 
 volumes:
   backend_data:
+  backend_uploads:
+  backend_media:
+  backend_baileys:
