@@ -7,12 +7,35 @@ import { getClient } from '../services/whatsappService';
 const getEffectiveSessionId = async (userId: string) => {
     const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { useOwnWhatsApp: true, role: true }
+        select: {
+            useOwnWhatsApp: true,
+            role: true,
+            accessGroup: {
+                select: {
+                    permissions: {
+                        select: {
+                            canUseOwnWhatsApp: true,
+                            canViewAllChats: true,
+                            canManageConnections: true
+                        }
+                    }
+                }
+            }
+        }
     });
+
+    const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+    const canUseOwnWhatsApp = isSuperAdmin || (user?.accessGroup?.permissions?.canUseOwnWhatsApp ?? false);
+    const canViewAllChats = isSuperAdmin || (user?.accessGroup?.permissions?.canViewAllChats ?? false);
+    const canManageConnections = isSuperAdmin || (user?.accessGroup?.permissions?.canManageConnections ?? false);
+    const useOwnWhatsApp = (user?.useOwnWhatsApp && canUseOwnWhatsApp) || false;
+
     return {
-        sessionId: user?.useOwnWhatsApp ? userId : 'GLOBAL',
-        useOwnWhatsApp: user?.useOwnWhatsApp || false,
-        role: user?.role || 'SELLER'
+        sessionId: useOwnWhatsApp ? userId : 'GLOBAL',
+        useOwnWhatsApp,
+        role: user?.role || 'SELLER',
+        canViewAllChats,
+        canManageConnections
     };
 };
 
@@ -105,32 +128,82 @@ export const createChat = async (req: Request, res: Response) => {
 };
 
 // ======================== GET CONVERSATIONS ========================
-// Returns ONLY conversations that belong to the logged-in user (via UserChat)
+// Returns conversations: all chats for admins (canViewAllChats), or assigned/owned chats for sellers
 export const getConversations = async (req: Request, res: Response) => {
     try {
         const userId = (req as any).user.userId;
-        const { sessionId, useOwnWhatsApp } = await getEffectiveSessionId(userId);
+        const { sessionId, useOwnWhatsApp, canViewAllChats } = await getEffectiveSessionId(userId);
 
-        // 1. Get all UserChat entries for this user
+        // 1. Fetch UserChats based on permissions
+        // Admins with canViewAllChats can see all UserChats; sellers only see their own
         const userChats = await prisma.userChat.findMany({
-            where: { userId },
+            where: canViewAllChats ? {} : { userId },
             include: {
                 company: {
-                    select: { id: true, name: true, phone: true, photoUrl: true }
+                    select: { id: true, name: true, phone: true, photoUrl: true, responsibleId: true }
                 }
             }
         });
 
-        if (userChats.length === 0) {
-            return res.json([]);
+        // 2. Also fetch assigned companies for sellers, or all companies with phone for admins
+        const companies = await prisma.company.findMany({
+            where: canViewAllChats ? { phone: { not: null } } : { responsibleId: userId, phone: { not: null } },
+            select: { id: true, name: true, phone: true, photoUrl: true, responsibleId: true }
+        });
+
+        // 3. Build company lookups (by chatId variations and clean phone numbers)
+        const companyMap = new Map<string, any>();
+        const companyByPhone = new Map<string, any>();
+
+        const registerCompany = (comp: any) => {
+            if (!comp || !comp.phone) return;
+            const clean = comp.phone.replace(/\D/g, '');
+            if (!clean) return;
+
+            companyByPhone.set(clean, comp);
+            if (clean.startsWith('55') && clean.length > 11) {
+                companyByPhone.set(clean.substring(2), comp);
+            } else if (clean.length <= 11) {
+                companyByPhone.set(`55${clean}`, comp);
+            }
+
+            const vars = getChatIdVariations(clean);
+            for (const v of vars) {
+                companyMap.set(v, comp);
+            }
+        };
+
+        companies.forEach(registerCompany);
+        userChats.forEach(uc => {
+            if (uc.company) {
+                registerCompany(uc.company);
+                companyMap.set(uc.chatId, uc.company);
+            }
+        });
+
+        // 4. Collect allowed chatIds if not canViewAllChats
+        const allowedChatIds = new Set<string>();
+        if (!canViewAllChats) {
+            userChats.forEach(uc => {
+                allowedChatIds.add(uc.chatId);
+                const clean = uc.chatId.replace(/@.*$/, '').replace(/\D/g, '');
+                getChatIdVariations(clean).forEach(v => allowedChatIds.add(v));
+            });
+            companies.forEach(comp => {
+                if (comp.phone) {
+                    const clean = comp.phone.replace(/\D/g, '');
+                    getChatIdVariations(clean).forEach(v => allowedChatIds.add(v));
+                }
+            });
         }
 
-        // 2. Collect all chatIds this user owns
-        const ownedChatIds = userChats.map(uc => uc.chatId);
+        // 5. Fetch latest messages
+        const messageWhere = canViewAllChats
+            ? {}
+            : { chatId: { in: Array.from(allowedChatIds) } };
 
-        // 3. Fetch the latest message per chatId
         const chats = await prisma.message.findMany({
-            where: { chatId: { in: ownedChatIds } },
+            where: messageWhere,
             distinct: ['chatId'],
             orderBy: { timestamp: 'desc' },
             select: {
@@ -143,9 +216,9 @@ export const getConversations = async (req: Request, res: Response) => {
             }
         });
 
-        // 4. Fetch unread counts
+        // 6. Fetch unread counts
         const chatIds = chats.map(c => c.chatId);
-        const unreadCounts = await prisma.message.groupBy({
+        const unreadCounts = chatIds.length > 0 ? await prisma.message.groupBy({
             by: ['chatId'],
             where: {
                 chatId: { in: chatIds },
@@ -153,31 +226,14 @@ export const getConversations = async (req: Request, res: Response) => {
                 ack: { lt: 3 }
             },
             _count: { _all: true }
-        });
+        }) : [];
 
         const unreadMap = new Map<string, number>();
         unreadCounts.forEach(count => {
             unreadMap.set(count.chatId, count._count._all);
         });
 
-        // 5. Build a company map from UserChat entries
-        const companyMap = new Map<string, any>();
-        userChats.forEach(uc => {
-            if (uc.company) {
-                companyMap.set(uc.chatId, uc.company);
-            }
-        });
-
-        // Also build a reverse map by phone for secondary matching
-        const companyByPhone = new Map<string, any>();
-        userChats.forEach(uc => {
-            if (uc.company?.phone) {
-                const clean = uc.company.phone.replace(/\D/g, '');
-                if (clean) companyByPhone.set(clean, uc.company);
-            }
-        });
-
-        // 6. Build final conversation list
+        // 7. Build final conversation list
         const finalChatsMap = new Map<string, any>();
 
         for (const chat of chats) {
@@ -226,13 +282,16 @@ export const getConversations = async (req: Request, res: Response) => {
             const existing = finalChatsMap.get(key);
             const timestamp = chat.timestamp;
 
-            // Fetch profile pic
+            // Fetch profile pic: try WhatsApp first, then fallback to company.photoUrl
             let avatar = existing?.avatar;
             if (!avatar) {
                 try {
                     const sessionForPic = useOwnWhatsApp ? sessionId : undefined;
                     avatar = await getProfilePicUrl(chatPhone, sessionForPic);
                 } catch (e) { }
+            }
+            if (!avatar && company?.photoUrl) {
+                avatar = company.photoUrl;
             }
 
             if (!existing || timestamp > existing.rawTimestamp) {
@@ -256,7 +315,7 @@ export const getConversations = async (req: Request, res: Response) => {
             }
         }
 
-        // 7. Add empty chats for UserChat entries that have no messages yet
+        // 8. Add empty chats for UserChat entries that have no messages yet
         for (const uc of userChats) {
             const chatPhone = uc.chatId.replace(/\D/g, '');
             let key = chatPhone;
@@ -264,10 +323,11 @@ export const getConversations = async (req: Request, res: Response) => {
 
             if (!finalChatsMap.has(key)) {
                 const company = uc.company;
-                let avatar = undefined;
+                let avatar = company?.photoUrl;
                 try {
                     const sessionForPic = useOwnWhatsApp ? sessionId : undefined;
-                    avatar = await getProfilePicUrl(chatPhone, sessionForPic);
+                    const waAvatar = await getProfilePicUrl(chatPhone, sessionForPic);
+                    if (waAvatar) avatar = waAvatar;
                 } catch (e) { }
 
                 finalChatsMap.set(key, {
@@ -283,6 +343,36 @@ export const getConversations = async (req: Request, res: Response) => {
                     isRead: true,
                     avatar
                 });
+            }
+        }
+
+        // 9. For assigned companies without userChat or messages, also add them so sellers see their assigned leads
+        if (!canViewAllChats) {
+            for (const comp of companies) {
+                if (!comp.phone) continue;
+                const clean = comp.phone.replace(/\D/g, '');
+                let key = clean;
+                if (key.startsWith('55') && key.length > 11) key = key.substring(2);
+
+                if (!finalChatsMap.has(key)) {
+                    let formattedJid = `${clean}@s.whatsapp.net`;
+                    if (clean.length <= 11 && !clean.startsWith('55')) {
+                        formattedJid = `55${clean}@s.whatsapp.net`;
+                    }
+                    finalChatsMap.set(key, {
+                        id: formattedJid,
+                        leadName: comp.name || clean,
+                        businessName: comp.name || '',
+                        lastMessage: 'Nova conversa',
+                        timestamp: '',
+                        rawTimestamp: 0,
+                        unreadCount: 0,
+                        phone: comp.phone,
+                        status: 'warm',
+                        isRead: true,
+                        avatar: comp.photoUrl || undefined
+                    });
+                }
             }
         }
 

@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ChatSidebar } from "@/components/chat/ChatSidebar";
 import { ChatWindow } from "@/components/chat/ChatWindow";
@@ -57,6 +57,8 @@ const Conversas = ({ user, onChatActive }: ConversasProps) => {
     // Use the user prop for mode and permissions instead of manual token decoding
     const canUseOwnWhatsApp = user?.permissions?.canUseOwnWhatsApp || false;
     const useOwnWhatsApp = user?.useOwnWhatsApp || false;
+    const canManageConnections = user?.permissions?.canManageConnections || user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN' || false;
+    const isPersonal = canUseOwnWhatsApp && useOwnWhatsApp;
     const initialUserId = user?.id || '';
 
     const { socket } = useWhatsApp();
@@ -77,21 +79,36 @@ const Conversas = ({ user, onChatActive }: ConversasProps) => {
 
     const toggleInfoPanel = () => setShowInfoPanel(prev => !prev);
 
+    const checkConnectionStatus = useCallback(async () => {
+        try {
+            const statusType = isPersonal ? 'personal' : 'global';
+            const res = await api.get(`/whatsapp/status?type=${statusType}`);
+            const st = res.data?.status;
+            if (st === 'CONNECTED' || st === 'READY') {
+                setConnectionStatus('CONNECTED');
+            } else if (st === 'CONNECTING' || st === 'Connecting...') {
+                setConnectionStatus('CONNECTING');
+            } else {
+                setConnectionStatus('DISCONNECTED');
+            }
+        } catch (err) {
+            console.error("Failed to fetch WhatsApp status", err);
+            setConnectionStatus('DISCONNECTED');
+        }
+    }, [isPersonal]);
+
     useEffect(() => {
         if (activeConversationId) {
             api.put(`/chat/${activeConversationId}/read`).catch(err => console.error("Failed to mark as read", err));
         }
+    }, [activeConversationId]);
+
+    useEffect(() => {
         fetchConversations();
         fetchTasks();
         fetchLeads();
-
-        // Initial status check
-        const statusType = useOwnWhatsApp ? 'personal' : 'global';
-        api.get(`/whatsapp/status?type=${statusType}`).then(res => {
-            setConnectionStatus(res.data.status);
-        }).catch(err => console.error("Failed to fetch initial status", err));
-
-    }, []); // Run once on mount
+        checkConnectionStatus();
+    }, [user?.id, checkConnectionStatus]);
 
     useEffect(() => {
         // Handle URL parameters for redirection from CRM card click
@@ -128,16 +145,16 @@ const Conversas = ({ user, onChatActive }: ConversasProps) => {
                 socket.off('whatsapp_status', statusListenerRef.current);
             }
             const statusHandler = (data: any) => {
-                const targetSessionId = useOwnWhatsApp ? userId : 'GLOBAL';
+                const targetSessionId = isPersonal ? (user?.id || userId) : 'GLOBAL';
                 const eventSessionId = data.sessionId || 'GLOBAL';
                 if (eventSessionId === targetSessionId) {
                     if (data.status === 'CONNECTED' || data.status === 'READY') {
                         setConnectionStatus('CONNECTED');
                         setIsConnectModalOpen(false);
-                    } else if (data.status === 'DISCONNECTED') {
-                        setConnectionStatus('DISCONNECTED');
-                    } else {
+                    } else if (data.status === 'CONNECTING' || data.status === 'Connecting...') {
                         setConnectionStatus('CONNECTING');
+                    } else {
+                        setConnectionStatus('DISCONNECTED');
                     }
                 }
             };
@@ -183,7 +200,7 @@ const Conversas = ({ user, onChatActive }: ConversasProps) => {
                 }
             }
         };
-    }, [socket]);
+    }, [socket, isPersonal, userId, user?.id]);
 
     const fetchConversations = async () => {
         try {
@@ -486,14 +503,25 @@ const Conversas = ({ user, onChatActive }: ConversasProps) => {
 
     return (
         <div className="flex h-full bg-background overflow-hidden relative flex-col">
-            {/* Toolbar for Multi-WhatsApp if enabled */}
+            {/* Toolbar for WhatsApp Mode & Connection */}
             <div className="bg-secondary/30 border-b border-border/50 p-2 flex justify-between items-center px-4">
                 <div className="flex items-center gap-2">
                     <span className="text-xs font-medium text-muted-foreground">
-                        {canUseOwnWhatsApp && useOwnWhatsApp ? 'Modo: WhatsApp Pessoal' : 'Modo: WhatsApp Global'}
+                        {isPersonal ? 'Modo: WhatsApp Pessoal' : 'Modo: WhatsApp Global'}
                     </span>
                     {/* Status Indicator */}
-                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-background/50 border border-border/50">
+                    <div
+                        className={cn(
+                            "flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-background/50 border border-border/50 transition-colors",
+                            (canManageConnections || isPersonal) && "cursor-pointer hover:bg-background/80"
+                        )}
+                        onClick={() => {
+                            if (canManageConnections || isPersonal) {
+                                setIsConnectModalOpen(true);
+                            }
+                        }}
+                        title={canManageConnections || isPersonal ? "Clique para gerenciar a conexão do WhatsApp" : undefined}
+                    >
                         <div className={`w-2 h-2 rounded-full ${connectionStatus === 'CONNECTED' ? 'bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.5)]' :
                             connectionStatus === 'CONNECTING' ? 'bg-yellow-500 animate-pulse' :
                                 'bg-red-500'
@@ -506,7 +534,7 @@ const Conversas = ({ user, onChatActive }: ConversasProps) => {
                     </div>
                 </div>
 
-                {canUseOwnWhatsApp && useOwnWhatsApp && (
+                {(canManageConnections || isPersonal) && (
                     <Button variant="ghost" size="sm" className="h-7 gap-2" onClick={() => setIsConnectModalOpen(true)}>
                         <QrCode className="w-3 h-3" />
                         Gerenciar Conexão
@@ -607,6 +635,7 @@ const Conversas = ({ user, onChatActive }: ConversasProps) => {
             <WhatsAppConnectModal
                 isOpen={isConnectModalOpen}
                 onClose={() => setIsConnectModalOpen(false)}
+                connectionType={isPersonal ? 'personal' : 'global'}
             />
 
         </div>

@@ -47,7 +47,7 @@ const findCompanyByPhone = async (phone: string) => {
                 phone: { contains: v }
             }))
         },
-        select: { id: true, phone: true }
+        select: { id: true, phone: true, responsibleId: true }
     });
 
     return company;
@@ -341,7 +341,10 @@ const handleIncomingMessage = async (msg: WAMessage, sessionId: string) => {
             chatId: from // important for frontend matching
         });
 
-        // Track ownership if not GLOBAL
+        // Track ownership
+        const cleanPhone = from.replace(/\D/g, '');
+        const company = await findCompanyByPhone(cleanPhone);
+
         if (sessionId !== 'GLOBAL') {
             await prisma.userChat.upsert({
                 where: {
@@ -350,12 +353,28 @@ const handleIncomingMessage = async (msg: WAMessage, sessionId: string) => {
                         chatId: from
                     }
                 },
-                update: {},
+                update: { companyId: company?.id || null },
                 create: {
                     userId: sessionId,
-                    chatId: from
+                    chatId: from,
+                    companyId: company?.id || null
                 }
-            });
+            }).catch(() => {});
+        } else if (company && company.responsibleId) {
+            await prisma.userChat.upsert({
+                where: {
+                    userId_chatId: {
+                        userId: company.responsibleId,
+                        chatId: from
+                    }
+                },
+                update: { companyId: company.id },
+                create: {
+                    userId: company.responsibleId,
+                    chatId: from,
+                    companyId: company.id
+                }
+            }).catch(() => {});
         }
 
     } catch (e) {
@@ -492,20 +511,39 @@ export const sendMessage = async (to: string, message: string, userId: string = 
             chatId: jid
         });
 
-        if (targetSessionId !== 'GLOBAL') {
+        const cleanToPhone = jid.replace(/@.*$/, '').replace(/\D/g, '');
+        const toCompany = await findCompanyByPhone(cleanToPhone);
+
+        if (userId && userId !== 'GLOBAL') {
             await prisma.userChat.upsert({
                 where: {
                     userId_chatId: {
-                        userId: targetSessionId,
+                        userId: userId,
                         chatId: jid
                     }
                 },
-                update: {},
+                update: { companyId: toCompany?.id || null },
                 create: {
-                    userId: targetSessionId,
-                    chatId: jid
+                    userId: userId,
+                    chatId: jid,
+                    companyId: toCompany?.id || null
                 }
-            });
+            }).catch(() => {});
+        } else if (toCompany && toCompany.responsibleId) {
+            await prisma.userChat.upsert({
+                where: {
+                    userId_chatId: {
+                        userId: toCompany.responsibleId,
+                        chatId: jid
+                    }
+                },
+                update: { companyId: toCompany.id },
+                create: {
+                    userId: toCompany.responsibleId,
+                    chatId: jid,
+                    companyId: toCompany.id
+                }
+            }).catch(() => {});
         }
 
     } catch (error) {
@@ -594,20 +632,39 @@ export const sendMedia = async (to: string, base64: string, type: 'ptt' | 'image
             chatId: jid
         });
 
-        if (targetSessionId !== 'GLOBAL') {
+        const cleanToPhone = jid.replace(/@.*$/, '').replace(/\D/g, '');
+        const toCompany = await findCompanyByPhone(cleanToPhone);
+
+        if (userId && userId !== 'GLOBAL') {
             await prisma.userChat.upsert({
                 where: {
                     userId_chatId: {
-                        userId: targetSessionId,
+                        userId: userId,
                         chatId: jid
                     }
                 },
-                update: {},
+                update: { companyId: toCompany?.id || null },
                 create: {
-                    userId: targetSessionId,
-                    chatId: jid
+                    userId: userId,
+                    chatId: jid,
+                    companyId: toCompany?.id || null
                 }
-            });
+            }).catch(() => {});
+        } else if (toCompany && toCompany.responsibleId) {
+            await prisma.userChat.upsert({
+                where: {
+                    userId_chatId: {
+                        userId: toCompany.responsibleId,
+                        chatId: jid
+                    }
+                },
+                update: { companyId: toCompany.id },
+                create: {
+                    userId: toCompany.responsibleId,
+                    chatId: jid,
+                    companyId: toCompany.id
+                }
+            }).catch(() => {});
         }
 
     } catch (error) {

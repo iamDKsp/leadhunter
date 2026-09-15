@@ -11,13 +11,13 @@ import api from '@/services/api';
 interface WhatsAppConnectModalProps {
     isOpen: boolean;
     onClose: () => void;
+    connectionType?: 'global' | 'personal';
 }
 
 import { useWhatsApp } from '@/context/WhatsAppContext';
 
-export function WhatsAppConnectModal({ isOpen, onClose }: WhatsAppConnectModalProps) {
+export function WhatsAppConnectModal({ isOpen, onClose, connectionType = 'personal' }: WhatsAppConnectModalProps) {
     const {
-        socket,
         status: contextStatus,
         qrCode: contextQr,
         setTargetSessionId
@@ -31,23 +31,39 @@ export function WhatsAppConnectModal({ isOpen, onClose }: WhatsAppConnectModalPr
     const storedUser = localStorage.getItem('user');
     const user = storedUser ? JSON.parse(storedUser) : null;
 
+    const isGlobal = connectionType === 'global';
+
     useEffect(() => {
-        if (isOpen && user?.id) {
-            setTargetSessionId(user.id);
+        if (isOpen) {
+            const target = isGlobal ? 'GLOBAL' : (user?.id || 'GLOBAL');
+            setTargetSessionId(target);
             // Sync status from context
             setStatus(contextStatus);
             setQrCode(contextQr);
+            // Fetch fresh status on open
+            checkStatus();
         }
-    }, [isOpen, contextStatus, contextQr, user]);
+    }, [isOpen, connectionType]);
+
+    // Also sync if context updates while modal is open
+    useEffect(() => {
+        if (isOpen) {
+            setStatus(contextStatus);
+            if (contextQr) setQrCode(contextQr);
+        }
+    }, [contextStatus, contextQr, isOpen]);
 
     const checkStatus = async () => {
         try {
             setLoading(true);
-            const res = await api.get('/whatsapp/status?type=personal');
+            const res = await api.get(`/whatsapp/status?type=${connectionType}`);
             setStatus(res.data.status);
+            if (res.data.qr) {
+                setQrCode(res.data.qr);
+            }
             if (res.data.status === 'CONNECTED') {
                 toast.success('WhatsApp já está conectado!');
-            } else {
+            } else if (res.data.status === 'DISCONNECTED') {
                 connect();
             }
         } catch (e) {
@@ -62,10 +78,13 @@ export function WhatsAppConnectModal({ isOpen, onClose }: WhatsAppConnectModalPr
         try {
             setLoading(true);
             setQrCode(null);
-            await api.post('/whatsapp/connect', { type: 'personal' });
-            toast.info('Iniciando sessão pessoal, aguarde o QR Code...');
+            const res = await api.post('/whatsapp/connect', { type: connectionType });
+            if (res.data?.qr) {
+                setQrCode(res.data.qr);
+            }
+            toast.info(`Iniciando sessão ${isGlobal ? 'global' : 'pessoal'}, aguarde o QR Code...`);
         } catch (e) {
-            toast.error('Erro ao iniciar conexão pessoal');
+            toast.error(`Erro ao iniciar conexão ${isGlobal ? 'global' : 'pessoal'}`);
         } finally {
             setLoading(false);
         }
@@ -74,12 +93,12 @@ export function WhatsAppConnectModal({ isOpen, onClose }: WhatsAppConnectModalPr
     const logout = async () => {
         try {
             setLoading(true);
-            await api.post('/whatsapp/disconnect', { type: 'personal' });
+            await api.post('/whatsapp/disconnect', { type: connectionType });
             setStatus('DISCONNECTED');
             setQrCode(null);
-            toast.success('WhatsApp Pessoal desconectado.');
+            toast.success(`WhatsApp ${isGlobal ? 'Global' : 'Pessoal'} desconectado.`);
         } catch (e) {
-            toast.error('Erro ao desconectar WhatsApp Pessoal');
+            toast.error(`Erro ao desconectar WhatsApp ${isGlobal ? 'Global' : 'Pessoal'}`);
         } finally {
             setLoading(false);
         }
@@ -89,14 +108,16 @@ export function WhatsAppConnectModal({ isOpen, onClose }: WhatsAppConnectModalPr
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Conectar WhatsApp Próprio</DialogTitle>
+                    <DialogTitle>{isGlobal ? 'Conectar WhatsApp Global' : 'Conectar WhatsApp Próprio'}</DialogTitle>
                     <DialogDescription>
-                        Escaneie o QR Code com seu aplicativo do WhatsApp para sincronizar suas conversas.
+                        {isGlobal
+                            ? 'Escaneie o QR Code com seu WhatsApp para conectar a linha principal da empresa.'
+                            : 'Escaneie o QR Code com seu aplicativo do WhatsApp para sincronizar suas conversas pessoais.'}
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="flex flex-col items-center justify-center p-6 space-y-4">
-                    {loading && status !== 'CONNECTED' && (
+                    {loading && status !== 'CONNECTED' && !qrCode && (
                         <div className="flex flex-col items-center">
                             <CyberRadarLoader size="md" label="CONECTANDO..." />
                         </div>
@@ -112,7 +133,7 @@ export function WhatsAppConnectModal({ isOpen, onClose }: WhatsAppConnectModalPr
                         </div>
                     )}
 
-                    {!loading && status !== 'CONNECTED' && qrCode && (
+                    {status !== 'CONNECTED' && qrCode && (
                         <div className="flex flex-col items-center">
                             <div className="bg-white p-2 rounded-lg border shadow-sm">
                                 <img src={qrCode} alt="QR Code" className="w-64 h-64" />
@@ -120,6 +141,9 @@ export function WhatsAppConnectModal({ isOpen, onClose }: WhatsAppConnectModalPr
                             <p className="text-sm text-muted-foreground mt-4 animate-pulse">
                                 Aguardando leitura...
                             </p>
+                            <Button variant="ghost" size="sm" className="mt-2 text-xs" onClick={connect}>
+                                Atualizar QR Code
+                            </Button>
                         </div>
                     )}
 

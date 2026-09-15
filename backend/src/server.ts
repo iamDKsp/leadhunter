@@ -105,10 +105,11 @@ app.post('/whatsapp/logout', authenticateToken, async (req, res) => {
 app.post('/whatsapp/send', authenticateToken, async (req, res) => {
     try {
         const { to, message } = req.body;
+        const userId = (req as any).user?.userId;
         if (!to || !message) {
             return res.status(400).json({ error: 'Missing "to" or "message"' });
         }
-        await sendMessage(to, message);
+        await sendMessage(to, message, userId);
         res.json({ success: true });
     } catch (error) {
         console.error("Error sending whatsapp message:", error);
@@ -122,10 +123,11 @@ app.post('/whatsapp/send', authenticateToken, async (req, res) => {
 app.post('/whatsapp/send-media', authenticateToken, async (req, res) => {
     try {
         const { to, media, type } = req.body;
+        const userId = (req as any).user?.userId;
         if (!to || !media) {
             return res.status(400).json({ error: 'Missing parameters' });
         }
-        await sendMedia(to, media, type || 'ptt');
+        await sendMedia(to, media, type || 'ptt', userId);
         res.json({ success: true });
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
